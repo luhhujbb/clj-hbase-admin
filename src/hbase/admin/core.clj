@@ -83,11 +83,11 @@
 (defn get-connection
   "Return a connection given a hbase name"
   [name]
-  (if-let [connection (get-in @hbase-connection-registry name nil)]
+  (if-let [connection (get @hbase-connection-registry name nil)]
     (if (.isClosed connection)
       (do
-        (mk-hbase-config name (get-in @hbase-connection-registry name))
-        (get-in @hbase-connection-registry name nil))
+        (mk-hbase-config name (get @hbase-connection-registry name))
+        (get @hbase-connection-registry name nil))
       connection)
     (log/error "No connection found for this cluster")))
 
@@ -137,19 +137,32 @@
   "Indicate if a row exists or not"
   [connection table-name row-key]
   (let [^Table table (get-table connection table-name)
-        ^Get get (Get. row-key)]
-    (.exists table get)))
+        ^Get get (Get. row-key)
+        res (.exists table get)]
+    (.close table)
+    res))
+
+(defn- cell->map
+  [^Cell cell]
+  {:row (CellUtil/cloneRow cell)
+   :family (CellUtil/cloneFamily cell)
+   :qualifier (CellUtil/cloneQualifier cell)
+   :value (CellUtil/cloneValue cell)
+   :timestamp (.getTimestamp cell)})
 
 (defn get-row
+  "Retrieve a row"
   [connection table-name row-key]
   (let [^Table table (get-table connection table-name)
         ^Get get-specs (Get. row-key)]
     (try
-      (let [^Result result (.getRow table get-specs)
-            ^List<Cell> cells (.listCells result)]
-            )
+      (let [^Result result (.get table get-specs)
+            ^List<Cell> cells (.listCells result)
+            _ (.close table)]
+            (map cell->map cells))
       (catch Exception e
-        (log/error "Error while getting row" e)))))
+        (log/error "Error while getting row" e)
+        "error"))))
 
 ;;Snapshots
 
@@ -185,19 +198,17 @@
     (str (:s3-protocol opts) (:bucket opts) (when with-path? (:path opts)))))
 
 (defn- mk-toolrunner-args
-  [snapshot-name url parallelism]
-  (into-array ["-snaspshot" snapshot-name "-copy-to" url "-mappers" (if (integer? parallelism) (.toString parallelism) parallelism)]))
-
-(defn- mk-tool-runner-config
-  [conf opts]
-  (let [properties
-   {:fs.default.name (mk-s3url true false opts)
-    :fs.defaultFS (mk-s3url true false opts)
-    :fs.s3.awsAccessKeyId (:access-key opts)
-    :fs.s3.awsSecretAccessKey (:secret-key opts)
-    :hbase.tmp.dir "/tmp/hbase-${user.name}"
-    :hbase.rootdir (mk-s3url true true opts)}]
-    (update-hbase-config conf properties)))
+  [{:keys [snapshot-name url-in url-out parallelism]}]
+  (into-array
+    (remove nil?
+    ["-snaspshot"
+     snapshot-name
+     (when url-in "-copy-from")
+     (when url-in url-in)
+     "-copy-to"
+     url-out
+     "-mappers"
+     (if (integer? parallelism) (.toString parallelism) parallelism)])))
 
 (defn export-snapshot-to-s3
   [name snapshot-name opts])
