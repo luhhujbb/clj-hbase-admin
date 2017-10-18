@@ -1,12 +1,15 @@
 (ns hbase.admin.core
   (:require [clojure.java [io :as io]]
-            [clojure.tools.logging :as log])
+            [clojure.tools.logging :as log]
+            [clojure.java.data :refer [from-java]])
   (:import [java.io InputStream]
            [org.apache.hadoop.util Tool]
            [org.apache.hadoop.util ToolRunner]
            [org.apache.hadoop.hbase.util Bytes]
            [org.apache.hadoop.conf Configuration Configured]
-           [org.apache.hadoop.hbase HBaseConfiguration TableName Cell CellUtil HTableDescriptor HColumnDescriptor KeyValue KeyValue$Type]
+           [org.apache.hadoop.hbase HBaseConfiguration TableName Cell
+           CellUtil HTableDescriptor HColumnDescriptor KeyValue KeyValue$Type
+           ClusterStatus ServerLoad]
            [org.apache.hadoop.hbase.client ConnectionFactory Admin Get Table Result]
            [org.apache.hadoop.hbase.protobuf.generated HBaseProtos$SnapshotDescription]
            [org.apache.hadoop.hbase.snapshot ExportSnapshot	SnapshotCreationException]))
@@ -106,6 +109,12 @@
   "Retrieve a Table implementation for accessing a table."
   [connection table-name]
   (.getTable connection (TableName/valueOf table-name)))
+
+;;Cluster
+
+(defn get-cluster-status
+  [^Admin admin]
+  (from-java (.getClusterStatus admin)))
 
 ;;Tables
 
