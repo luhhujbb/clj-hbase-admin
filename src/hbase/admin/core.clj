@@ -11,8 +11,6 @@
            [org.apache.hadoop.hbase.protobuf.generated HBaseProtos$SnapshotDescription]
            [org.apache.hadoop.hbase.snapshot ExportSnapshot	SnapshotCreationException]))
 
-(def hbase-general-config (atom {}))
-
 (def hbase-connection-registry (atom {}))
 
 (def hbase-config-registry (atom {}))
