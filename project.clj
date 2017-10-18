@@ -1,7 +1,7 @@
 (def hadoop-version "2.7.3")
 (def hbase-version "1.1.3")
 
-(defproject hbase-admin "0.1.0-SNAPSHOT"
+(defproject hbase-admin "0.1.0"
   :description "FIXME: write description"
   :url "http://example.com/FIXME"
   :license {:name "Eclipse Public License"

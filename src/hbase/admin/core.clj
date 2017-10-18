@@ -6,7 +6,7 @@
            [org.apache.hadoop.util ToolRunner]
            [org.apache.hadoop.hbase.util Bytes]
            [org.apache.hadoop.conf Configuration Configured]
-           [org.apache.hadoop.hbase HBaseConfiguration TableName Cell CellUtil HTableDescriptor KeyValue KeyValue$Type]
+           [org.apache.hadoop.hbase HBaseConfiguration TableName Cell CellUtil HTableDescriptor HColumnDescriptor KeyValue KeyValue$Type]
            [org.apache.hadoop.hbase.client ConnectionFactory Admin Get Table Result]
            [org.apache.hadoop.hbase.protobuf.generated HBaseProtos$SnapshotDescription]
            [org.apache.hadoop.hbase.snapshot ExportSnapshot	SnapshotCreationException]))
@@ -137,7 +137,6 @@
    (into []
      (map get-table-details (.listTables admin))))
 
-
 (defn disable-table
   "Disable Table"
   [^Admin admin table-name]
@@ -148,6 +147,14 @@
   [^Admin admin table-name]
   (disable-table admin table-name)
   (.deleteTable admin (TableName/valueOf table-name)))
+
+(defn create-table
+  "Create table"
+  [^Admin admin table-name column-families]
+  (let [^HTableDescriptor table (HTableDescriptor. (TableName/valueOf table-name))]
+    (doseq [family column-families]
+      (.addFamily table (HColumnDescriptor. family)))
+    (.createTable admin table)))
 
 ;;Row
 
