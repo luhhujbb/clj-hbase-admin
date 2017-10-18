@@ -137,6 +137,18 @@
    (into []
      (map get-table-details (.listTables admin))))
 
+
+(defn disable-table
+  "Disable Table"
+  [^Admin admin table-name]
+  (.disableTable admin (TableName/valueOf table-name)))
+
+(defn delete-table
+  "Delete Table"
+  [^Admin admin table-name]
+  (disable-table admin table-name)
+  (.deleteTable admin (TableName/valueOf table-name)))
+
 ;;Row
 
 (defn cell->map
@@ -188,14 +200,25 @@
   [^Admin admin]
   (.listSnapshots admin))
 
+(defn list-snapshots-name
+  [^Admin admin]
+  (map (fn [^HBaseProtos$SnapshotDescription x] (.getName x)) (.listSnapshots admin)))
+
 (defn snapshot
   "Create a timestamp consistent snapshot for the given table"
   [^Admin admin table-name snapshot-name]
-  (.snapshot admin table-name snapshot-name))
+  (.snapshot admin snapshot-name (TableName/valueOf table-name)))
+
+(defn snapshot-all
+  "Create a timestamp consistent snapshot for all the tables"
+  [^Admin admin snapshot-name]
+  (let [tables-name (list-tables-names-as-string admin)]
+    (doseq [tn tables-name]
+      (snapshot admin tn (str tn "-" snapshot-name)))))
 
 (defn delete-snapshot
   "Delete an existing snapshot."
-  [^Admin admin table-name snapshot-name]
+  [^Admin admin snapshot-name]
   (.deleteSnapshot admin snapshot-name))
 
 (defn restore-snapshot
@@ -227,31 +250,58 @@
      "-mappers"
      (if (integer? parallelism) (.toString parallelism) parallelism)])))
 
+ (defn- mk-toolrunner-import-config
+   [conf opts]
+   (let [tr-config (HBaseConfiguration/create conf)
+         properties
+    {:fs.default.name (mk-s3-url true false opts)
+     :fs.defaultFS (mk-s3-url true false opts)
+     :fs.s3.awsAccessKeyId (:access-key opts)
+     :fs.s3.awsSecretAccessKey (:secret-key opts)
+     :hbase.tmp.dir "/tmp/hbase-${user.name}"
+     :hbase.rootdir (mk-s3-url true true opts)}]
+     (update-hbase-config tr-config properties)))
+
 (defn export-snapshot-to-s3
+  "Export a single snapshot to s3"
   [hbase-name snapshot-name opts]
   (try
   (ToolRunner/run
     (get-config hbase-name)
     (ExportSnapshot.)
     (mk-toolrunner-args {:snapshot-name snapshot-name
-                         :url-out (mk-s3-url opts)
+                         :url-out (mk-s3-url true true opts)
                          :parallelism (or (:parallelism opts) 1)}))
     (catch Exception e
-      (log/error "Exception occured while exporting snapshot to s3"))))
+      (log/error "Exception occured while exporting snapshot to s3" e))))
+
+
+(defn export-all-table-snapshot-to-s3
+  "Export an 'all-table' snapshot to s3"
+  [hbase-name snapshot-name opts]
+  (try
+    (let [admin (get-admin (get-connection hbase-name))
+          tables-name (list-tables-names-as-string admin)]
+          (doseq [tn tables-name]
+            (export-snapshot-to-s3 admin (str tn "-" snapshot-name) opts)))
+    (catch Exception e
+      (log/error "Exception occured while exporting snapshot to s3" e))))
 
 (defn import-snapshot-from-s3
+  "Import a snapshot from s3 given a snapshot name"
   [hbase-name snapshot-name opts]
   (let [^HBaseConfiguration config (get-config hbase-name)
+        tr-config (mk-toolrunner-import-config config opts)
         hdfsurl (or (.get config "fs.default.name") (.get config "fs.defaultFS"))]
     (if hdfsurl
     (try
     (ToolRunner/run
-      config
+      tr-config
       (ExportSnapshot.)
       (mk-toolrunner-args {:snapshot-name snapshot-name
-                         :url-in (mk-s3-url opts)
-                         :url-out hdfsurl
-                         :parallelism (or (:parallelism opts) 1)}))
+                           :url-in (mk-s3-url opts)
+                           :url-out hdfsurl
+                           :parallelism (or (:parallelism opts) 1)}))
           (catch Exception e
             (log/error "Exception occured while importing from s3")))
       (do
