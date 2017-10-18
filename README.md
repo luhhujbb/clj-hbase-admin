@@ -1,3 +1,5 @@
+[![Clojars Project](https://img.shields.io/clojars/v/luhhujbb/hbase-admin.svg)](https://clojars.org/luhhujbb/hbase-admin)
+
 # clj-hbase-admin
 
 A library to administer hbase
