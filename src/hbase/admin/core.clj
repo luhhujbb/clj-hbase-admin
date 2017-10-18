@@ -6,7 +6,7 @@
            [org.apache.hadoop.util ToolRunner]
            [org.apache.hadoop.hbase.util Bytes]
            [org.apache.hadoop.conf Configuration Configured]
-           [org.apache.hadoop.hbase HBaseConfiguration TableName Cell CellUtil HTableDescriptor]
+           [org.apache.hadoop.hbase HBaseConfiguration TableName Cell CellUtil HTableDescriptor KeyValue KeyValue$Type]
            [org.apache.hadoop.hbase.client ConnectionFactory Admin Get Table Result]
            [org.apache.hadoop.hbase.protobuf.generated HBaseProtos$SnapshotDescription]
            [org.apache.hadoop.hbase.snapshot ExportSnapshot	SnapshotCreationException]))
@@ -16,6 +16,8 @@
 (def hbase-connection-registry (atom {}))
 
 (def hbase-config-registry (atom {}))
+
+(def cell-type #{"Minimum" "Put" "Delete" "DeleteFamilyVersion" "DeleteColumn" "DeleteFamily" "Maximum"})
 
 (def s3-default-protocol "s3n://")
 
@@ -82,14 +84,20 @@
 
 (defn get-connection
   "Return a connection given a hbase name"
-  [name]
-  (if-let [connection (get @hbase-connection-registry name nil)]
+  [hbase-name]
+  (if-let [connection (get @hbase-connection-registry hbase-name nil)]
     (if (.isClosed connection)
       (do
-        (mk-hbase-config name (get @hbase-connection-registry name))
-        (get @hbase-connection-registry name nil))
+        (mk-hbase-config hbase-name (get @hbase-config-registry hbase-name))
+        (get @hbase-connection-registry hbase-name nil))
       connection)
     (log/error "No connection found for this cluster")))
+
+
+(defn get-config
+  "Return an hbase config"
+  [hbase-name]
+  (get @hbase-config-registry hbase-name))
 
 (defn get-admin
   "Retrieve an Admin implementation to administer an HBase cluster."
@@ -133,6 +141,25 @@
 
 ;;Row
 
+(defn cell->map
+  [^Cell cell]
+  {:row (CellUtil/cloneRow cell)
+   :family (CellUtil/cloneFamily cell)
+   :qualifier (CellUtil/cloneQualifier cell)
+   :value (CellUtil/cloneValue cell)
+   :timestamp (.getTimestamp cell)
+   :type (.name (KeyValue$Type/codeToType (.getTypeByte cell)))})
+
+(defn map->cell
+  [mcell]
+  (CellUtil/createCell
+    (:row mcell)
+    (:family mcell)
+    (:qualifier mcell)
+    (:timestamp mcell)
+    (.getCode (KeyValue$Type/valueOf (:type mcell)))
+    (:value mcell)))
+
 (defn exist?
   "Indicate if a row exists or not"
   [connection table-name row-key]
@@ -141,14 +168,6 @@
         res (.exists table get)]
     (.close table)
     res))
-
-(defn- cell->map
-  [^Cell cell]
-  {:row (CellUtil/cloneRow cell)
-   :family (CellUtil/cloneFamily cell)
-   :qualifier (CellUtil/cloneQualifier cell)
-   :value (CellUtil/cloneValue cell)
-   :timestamp (.getTimestamp cell)})
 
 (defn get-row
   "Retrieve a row"
@@ -191,7 +210,7 @@
   [^Admin admin snapshot-name table-name]
   (.cloneSnapshot admin snapshot-name (TableName/valueOf table-name)))
 
-(defn- mk-s3url
+(defn- mk-s3-url
   [with-creds? with-path? opts]
   (if with-creds?
     (str (:s3-protocol opts) (:access-key opts) ":" (:secret-key opts) + "@" (:bucket opts) (when with-path? (:path opts)))
@@ -211,7 +230,32 @@
      (if (integer? parallelism) (.toString parallelism) parallelism)])))
 
 (defn export-snapshot-to-s3
-  [name snapshot-name opts])
+  [hbase-name snapshot-name opts]
+  (try
+  (ToolRunner/run
+    (get-config hbase-name)
+    (ExportSnapshot.)
+    (mk-toolrunner-args {:snapshot-name snapshot-name
+                         :url-out (mk-s3-url opts)
+                         :parallelism (or (:parallelism opts) 1)}))
+    (catch Exception e
+      (log/error "Exception occured while exporting snapshot to s3"))))
 
 (defn import-snapshot-from-s3
-  [name snapshot-name opts])
+  [hbase-name snapshot-name opts]
+  (let [^HBaseConfiguration config (get-config hbase-name)
+        hdfsurl (or (.get config "fs.default.name") (.get config "fs.defaultFS"))]
+    (if hdfsurl
+    (try
+    (ToolRunner/run
+      config
+      (ExportSnapshot.)
+      (mk-toolrunner-args {:snapshot-name snapshot-name
+                         :url-in (mk-s3-url opts)
+                         :url-out hdfsurl
+                         :parallelism (or (:parallelism opts) 1)}))
+          (catch Exception e
+            (log/error "Exception occured while importing from s3")))
+      (do
+        (log/error "Missing hdfs url in config, can't import snapshot")
+        {:error true :msg "missing hdfs url in config"}))))
