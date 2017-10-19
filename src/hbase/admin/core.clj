@@ -10,7 +10,7 @@
            [org.apache.hadoop.hbase HBaseConfiguration TableName Cell
            CellUtil HTableDescriptor HColumnDescriptor KeyValue KeyValue$Type
            ClusterStatus ServerLoad]
-           [org.apache.hadoop.hbase.client ConnectionFactory Admin Get Table Result]
+           [org.apache.hadoop.hbase.client ConnectionFactory Admin Get Put Delete Increment Table Result]
            [org.apache.hadoop.hbase.protobuf.generated HBaseProtos$SnapshotDescription]
            [org.apache.hadoop.hbase.snapshot ExportSnapshot	SnapshotCreationException]))
 
@@ -200,6 +200,36 @@
     (.close table)
     res))
 
+(defn put-row
+  "Put a row to a table"
+  [connection table-name row-key mcells & [ts?]]
+  (let [^Table table (get-table connection table-name)
+        ^Put put-specs (Put. row-key)]
+        (doseq [mcell mcells]
+          (if-not ts?
+            (.addColumn put-specs (:family mcell) (:qualifier mcell) (:value mcell))
+            (.addColumn put-specs (:family mcell) (:qualifier mcell) (:timestamp mcell) (:value mcell))))
+        (try
+          (.put table put-specs)
+          (.close table)
+          (catch Exception e
+            (log/error "Error while putting row" e)))))
+
+(defn inc-row
+  "Increments one or more columns within a single row.
+  map-cells (mcells) value is converted to amount if amount keyword is absent"
+  [connection table-name row-key mcells]
+  (let [^Table table (get-table connection table-name)
+        ^Increment inc-specs (Increment. row-key)]
+        (doseq [mcell mcells]
+          (when (integer? (or (:amount mcell) (:value mcell)))
+            (.addColumn inc-specs
+              (:family mcell)
+              (:qualifier mcell)
+              (long (or (:amount mcell) (:value mcell))))))
+        (.increment table inc-specs)
+        (.close table)))
+
 (defn get-row
   "Retrieve a row"
   [connection table-name row-key]
@@ -213,6 +243,22 @@
       (catch Exception e
         (log/error "Error while getting row" e)
         "error"))))
+
+(defn delete-row
+  "Delete a row"
+  [connection table-name row-key & [mcells ts?]]
+  (let [^Table table (get-table connection table-name)
+        ^Delete del-specs (Delete. row-key)]
+        (when mcells
+          (doseq [mcell mcells]
+          (if-not ts?
+            (.addColumns del-specs (:family mcell) (:qualifier mcell))
+            (.addColumn del-specs (:family mcell) (:qualifier mcell) (:timestamp mcell)))))
+    (try
+          (.delete table del-specs)
+          (.close table)
+      (catch Exception e
+        (log/error "Error while deleting row" e)))))
 
 ;;Snapshots
 
