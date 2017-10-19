@@ -71,6 +71,10 @@ lein do clean, install
   (hbase/snapshot-all admin "my-snapshot"))
 ```
 
+## TODO
+
+test import/export from s3
+
 ## License
 
 Copyright © 2017 Jean-Baptiste Besselat / Linkfluence SAS

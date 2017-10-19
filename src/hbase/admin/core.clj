@@ -242,6 +242,13 @@
   [^Admin admin snapshot-name]
   (.deleteSnapshot admin snapshot-name))
 
+(defn delete-snapshot-all
+  "Delete snapshots created with 'snapshot-all'"
+  [^Admin admin snapshot-name]
+  (let [tables-name (list-tables-name-as-string admin)]
+    (doseq [tn tables-name]
+      (delete-snapshot admin (str tn "-" snapshot-name)))))
+
 (defn restore-snapshot
   "Restore the specified snapshot on the original table."
   [^Admin admin snapshot-name]
