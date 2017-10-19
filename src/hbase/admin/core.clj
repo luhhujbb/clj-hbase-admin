@@ -89,7 +89,7 @@
   (if-let [connection (get @hbase-connection-registry hbase-name nil)]
     (if (.isClosed connection)
       (do
-        (mk-hbase-config hbase-name (get @hbase-config-registry hbase-name))
+        (init-hbase-connection hbase-name (get @hbase-config-registry hbase-name))
         (get @hbase-connection-registry hbase-name nil))
       connection)
     (log/error "No connection found for this cluster")))
@@ -118,12 +118,17 @@
 
 ;;Tables
 
-(defn list-tables-names
+(defn list-tables
+  "List all tables, return HTableDescriptor object array"
+  [^Admin admin]
+  (.listTables admin))
+
+(defn list-tables-name
   "List all of the names of userspace tables."
   [^Admin admin]
   (.listTableNames admin))
 
-(defn list-tables-names-as-string
+(defn list-tables-name-as-string
   [^Admin admin]
   "List all of the names as string of userspace tables."
   (into [] (map (fn [x] (.getNameAsString x)) (.listTableNames admin))))
@@ -228,7 +233,7 @@
 (defn snapshot-all
   "Create a timestamp consistent snapshot for all the tables"
   [^Admin admin snapshot-name]
-  (let [tables-name (list-tables-names-as-string admin)]
+  (let [tables-name (list-tables-name-as-string admin)]
     (doseq [tn tables-name]
       (snapshot admin tn (str tn "-" snapshot-name)))))
 
@@ -297,7 +302,7 @@
   [hbase-name snapshot-name opts]
   (try
     (let [admin (get-admin (get-connection hbase-name))
-          tables-name (list-tables-names-as-string admin)]
+          tables-name (list-tables-name-as-string admin)]
           (doseq [tn tables-name]
             (export-snapshot-to-s3 admin (str tn "-" snapshot-name) opts)))
     (catch Exception e
