@@ -13,7 +13,7 @@
            [org.apache.hadoop.hbase.client ConnectionFactory Admin Get Put Delete Increment Table Result]
            [org.apache.hadoop.hbase.protobuf.generated HBaseProtos$SnapshotDescription]
            [org.apache.hadoop.hbase.snapshot ExportSnapshot	SnapshotCreationException]
-           [org.rtgi.hbase.admin HBaseClusterStatus]))
+           [eu.rtgi.hbase.admin HBaseClusterStatus]))
 
 (def hbase-connection-registry (atom {}))
 
