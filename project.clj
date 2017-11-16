@@ -23,5 +23,6 @@
                  [org.apache.hbase/hbase-protocol ~hbase-version]
                  [org.apache.hbase/hbase ~hbase-version :extension "pom"]
                  [amazonica "0.3.111"]]
-
+  :source-paths ["src/clj"]
+  :java-source-paths ["src/java"]
   :aot :all)
