@@ -115,7 +115,7 @@
 
 (defn get-cluster-status
   [^Admin admin]
-  (from-java (.getClusterStatus admin)))
+  (HBaseClusterStatus/get admin))
 
 ;;Tables
 
