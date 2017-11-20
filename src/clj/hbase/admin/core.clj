@@ -127,6 +127,21 @@
   (let [sl (get-servers-load admin)]
     (mapcat (fn [x] (:regions-load x)) sl)))
 
+(defn get-server-regions-load
+  [^Admin admin server]
+  (:regions-load
+      (first (filter
+        (fn [x]
+          (= server (:host (:server x))))
+        (HBaseClusterStatus/getServersLoad admin)))))
+
+(defn get-table-regions-load
+  [^Admin admin table]
+      (filter
+        (fn [x]
+          (= table (get (str/split (:name-as-string x) #"," 2) 0)))
+        (get-regions-load admin)))
+
 (defn get-tables-load
   [^Admin admin]
   (let [rl (get-regions-load admin)]
