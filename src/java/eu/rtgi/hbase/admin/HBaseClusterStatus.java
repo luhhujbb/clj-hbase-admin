@@ -126,9 +126,7 @@ public class HBaseClusterStatus {
     cSL.add(kw("live-servers"));
     cSL.add(getServerList(st.getServers()));
     cSL.add(kw("nb-dead-servers"));
-    //this is deprecated in 2.0.0 branch
-    //cSL.add(st.getDeadServersSize());
-    cSL.add(st.getDeadServers());
+    cSL.add(st.getDeadServerNames().size());
     cSL.add(kw("dead-servers"));
     cSL.add(getServerList(st.getDeadServerNames()));
     cSL.add(kw("nb-regions"));
@@ -143,107 +141,153 @@ public class HBaseClusterStatus {
     cSL.add(st.getAverageLoad());
     return map(cSL);
   }
+
+  public static PersistentHashMap getRegionLoadMap(RegionLoad rl){
+    ArrayList<Object> rlPL = new ArrayList<Object>();
+    rlPL.add(kw("name-as-string"));
+    rlPL.add(rl.getNameAsString());
+    rlPL.add(kw("nb-requests"));
+    rlPL.add(rl.getRequestsCount());
+    rlPL.add(kw("nb-read-requests"));
+    rlPL.add(rl.getReadRequestsCount());
+    rlPL.add(kw("nb-write-requests"));
+    rlPL.add(rl.getWriteRequestsCount());
+    rlPL.add(kw("nb-stores"));
+    rlPL.add(rl.getStores());
+    rlPL.add(kw("nb-stores-files"));
+    rlPL.add(rl.getStorefiles());
+    rlPL.add(kw("data-locality"));
+    rlPL.add(rl.getDataLocality());
+    rlPL.add(kw("store-file-size-mb"));
+    rlPL.add(rl.getStorefileSizeMB());
+    rlPL.add(kw("store-file-index-size-mb"));
+    rlPL.add(rl.getStorefileIndexSizeMB());
+    rlPL.add(kw("memstore-size-mb"));
+    rlPL.add(rl.getMemStoreSizeMB());
+    rlPL.add(kw("root-index-size-kb"));
+    rlPL.add(rl.getRootIndexSizeKB());
+    rlPL.add(kw("total-static-bloom-size-kb"));
+    rlPL.add(rl.getTotalStaticBloomSizeKB());
+    rlPL.add(kw("total-static-index-size-kb"));
+    rlPL.add(rl.getTotalStaticIndexSizeKB());
+    rlPL.add(kw("current-compacted-kvs"));
+    rlPL.add(rl.getCurrentCompactedKVs());
+    rlPL.add(kw("total-compacting-kvs"));
+    rlPL.add(rl.getTotalCompactingKVs());
+    return map(rlPL);
+  }
+
+  public static PersistentVector getRegionsLoadPV(Map<byte[],RegionLoad> rls){
+    ArrayList<Object> rlL = new ArrayList<Object>();
+    for (Map.Entry<byte[], RegionLoad> entry : rls.entrySet()) {
+      rlL.add(getRegionLoadMap(entry.getValue()));
+    }
+    return PersistentVector.create(rlL);
+  }
+
+  public static PersistentHashMap getServerLoad(ClusterStatus st, ServerName server) throws IOException, InterruptedException{
+    ArrayList<Object> sLPL = new ArrayList<Object>();
+    ArrayList<Object> sLIPL = new ArrayList<Object>();
+    sLPL.add(kw("server"));
+    sLPL.add(getServerMap(server));
+    ServerLoad load = st.getLoad(server);
+    sLPL.add(kw("load-info"));
+    sLIPL.add(kw("nb-regions"));
+    sLIPL.add(load.getNumberOfRegions());
+    sLIPL.add(kw("nb-requests"));
+    sLIPL.add(load.getNumberOfRequests());
+    sLIPL.add(kw("nb-read-requests"));
+    sLIPL.add(load.getReadRequestsCount());
+    sLIPL.add(kw("nb-write-requests"));
+    sLIPL.add(load.getWriteRequestsCount());
+    sLIPL.add(kw("memstore-size-mb"));
+    sLIPL.add(load.getMemstoreSizeInMB());
+    sLIPL.add(kw("requests-per-second"));
+    sLIPL.add(load.getRequestsPerSecond());
+    sLIPL.add(kw("nb-stores"));
+    sLIPL.add(load.getStores());
+    sLIPL.add(kw("uncompressed-store-size-mb"));
+    sLIPL.add(load.getStoreUncompressedSizeMB());
+    sLIPL.add(kw("nb-store-files"));
+    sLIPL.add(load.getStorefiles());
+    sLIPL.add(kw("store-file-size-mb"));
+    sLIPL.add(load.getStorefileSizeInMB());
+    sLIPL.add(kw("store-file-index-size-mb"));
+    sLIPL.add(load.getStorefileIndexSizeInMB());
+    sLIPL.add(kw("root-index-size-kb"));
+    sLIPL.add(load.getRootIndexSizeKB());
+    sLIPL.add(kw("total-static-bloom-size-kb"));
+    sLIPL.add(load.getTotalStaticBloomSizeKB());
+    sLIPL.add(kw("total-static-index-size-kb"));
+    sLIPL.add(load.getTotalStaticIndexSizeKB());
+    sLIPL.add(kw("current-compacted-kvs"));
+    sLIPL.add(load.getCurrentCompactedKVs());
+    sLIPL.add(kw("total-compacting-kvs"));
+    sLIPL.add(load.getTotalCompactingKVs());
+    sLIPL.add(kw("rs-coprocessor"));
+    sLIPL.add(PersistentVector.adopt((Object[]) load.getRegionServerCoprocessors()));
+    sLIPL.add(kw("rs-coprocessor-region-level"));
+    sLIPL.add(PersistentVector.adopt((Object[]) load.getRsCoprocessors()));
+    sLIPL.add(kw("max-heap-mb"));
+    sLIPL.add(load.getMaxHeapMB());
+    sLIPL.add(kw("used-heap-mb"));
+    sLIPL.add(load.getUsedHeapMB());
+    sLPL.add(map(sLIPL));
+    sLPL.add(kw("regions-load"));
+    sLPL.add(getRegionsLoadPV(load.getRegionsLoad()));
+    return map(sLPL);
+  }
+
+  public static PersistentVector getServersLoad(Admin admin) throws IOException, InterruptedException{
+    ClusterStatus st = admin.getClusterStatus();
+    ArrayList<Object> sLL = new ArrayList<Object>();
+    for (ServerName server : st.getServers()) {
+      sLL.add(getServerLoad(st,server));
+    }
+    return PersistentVector.create(sLL);
+  }
+
 }
 
-  //public PersistentHashMap getServersLoad(){
-
-  //}
-
-  //public PersistentHashMap getRegionsLoad(){
-
-  //}
 
 
-
-//     System.out.println("\nServer Info:\n--------------");
-//     for (ServerName server : st.getServers()) { // co ClusterStatusExample-2-ServerInfo Iterate over the included server instances.
-//       System.out.println("Hostname: " + server.getHostname());
-//       System.out.println("Host and Port: " + server.getHostAndPort());
-//       System.out.println("Server Name: " + server.getServerName());
-//       System.out.println("RPC Port: " + server.getPort());
-//       System.out.println("Start Code: " + server.getStartcode());
 //
-//       ServerLoad load = st.getLoad(server); // co ClusterStatusExample-3-ServerLoad Retrieve the load details for the current server.
-//
-//       System.out.println("\nServer Load:\n--------------");
-//       System.out.println("Info Port: " + load.getInfoServerPort());
-//       System.out.println("Load: " + load.getLoad());
-//       System.out.println("Max Heap (MB): " + load.getMaxHeapMB());
-//       System.out.println("Used Heap (MB): " + load.getUsedHeapMB());
-//       System.out.println("Memstore Size (MB): " +
-//         load.getMemstoreSizeInMB());
-//       System.out.println("No. Regions: " + load.getNumberOfRegions());
-//       System.out.println("No. Requests: " + load.getNumberOfRequests());
-//       System.out.println("Total No. Requests: " +
-//         load.getTotalNumberOfRequests());
-//       System.out.println("No. Requests per Sec: " +
-//         load.getRequestsPerSecond());
-//       System.out.println("No. Read Requests: " +
-//         load.getReadRequestsCount());
-//       System.out.println("No. Write Requests: " +
-//         load.getWriteRequestsCount());
-//       System.out.println("No. Stores: " + load.getStores());
-//       System.out.println("Store Size Uncompressed (MB): " +
-//         load.getStoreUncompressedSizeMB());
-//       System.out.println("No. Storefiles: " + load.getStorefiles());
-//       System.out.println("Storefile Size (MB): " +
-//         load.getStorefileSizeInMB());
-//       System.out.println("Storefile Index Size (MB): " +
-//         load.getStorefileIndexSizeInMB());
-//       System.out.println("Root Index Size: " + load.getRootIndexSizeKB());
-//       System.out.println("Total Bloom Size: " +
-//         load.getTotalStaticBloomSizeKB());
-//       System.out.println("Total Index Size: " +
-//         load.getTotalStaticIndexSizeKB());
-//       System.out.println("Current Compacted Cells: " +
-//         load.getCurrentCompactedKVs());
-//       System.out.println("Total Compacting Cells: " +
-//         load.getTotalCompactingKVs());
-//       System.out.println("Coprocessors1: " +
-//         Arrays.asList(load.getRegionServerCoprocessors()));
-//       System.out.println("Coprocessors2: " +
-//         Arrays.asList(load.getRsCoprocessors()));
-//       System.out.println("Replication Load Sink: " +
-//         load.getReplicationLoadSink());
-//       System.out.println("Replication Load Source: " +
-//         load.getReplicationLoadSourceList());
-//
-//       System.out.println("\nRegion Load:\n--------------");
+//       rlPL.add("\nRegion Load:\n--------------");
 //       for (Map.Entry<byte[], RegionLoad> entry : // co ClusterStatusExample-4-Regions Iterate over the region details of the current server.
 //           load.getRegionsLoad().entrySet()) {
-//         System.out.println("Region: " + Bytes.toStringBinary(entry.getKey()));
+//         rlPL.add("Region: " + Bytes.toStringBinary(entry.getKey()));
 //
-//         RegionLoad regionLoad = entry.getValue(); // co ClusterStatusExample-5-RegionLoad Get the load details for the current region.
+//         RegionLoad rlPL.add(rl. = entry.getValue(); // co ClusterStatusExample-5-RegionLoad Get the load details for the current region.
 //
-//         System.out.println("Name: " + Bytes.toStringBinary(
-//           regionLoad.getName()));
-//         System.out.println("Name (as String): " +
-//           regionLoad.getNameAsString());
-//         System.out.println("No. Requests: " + regionLoad.getRequestsCount());
-//         System.out.println("No. Read Requests: " +
-//           regionLoad.getReadRequestsCount());
-//         System.out.println("No. Write Requests: " +
-//           regionLoad.getWriteRequestsCount());
-//         System.out.println("No. Stores: " + regionLoad.getStores());
-//         System.out.println("No. Storefiles: " + regionLoad.getStorefiles());
-//         System.out.println("Data Locality: " + regionLoad.getDataLocality());
-//         System.out.println("Storefile Size (MB): " +
-//           regionLoad.getStorefileSizeMB());
-//         System.out.println("Storefile Index Size (MB): " +
-//           regionLoad.getStorefileIndexSizeMB());
-//         System.out.println("Memstore Size (MB): " +
-//           regionLoad.getMemStoreSizeMB());
-//         System.out.println("Root Index Size: " +
-//           regionLoad.getRootIndexSizeKB());
-//         System.out.println("Total Bloom Size: " +
-//           regionLoad.getTotalStaticBloomSizeKB());
-//         System.out.println("Total Index Size: " +
-//           regionLoad.getTotalStaticIndexSizeKB());
-//         System.out.println("Current Compacted Cells: " +
-//           regionLoad.getCurrentCompactedKVs());
-//         System.out.println("Total Compacting Cells: " +
-//           regionLoad.getTotalCompactingKVs());
-//         System.out.println();
+//         rlPL.add("Name: " + Bytes.toStringBinary(
+//           rlPL.add(rl..getName()));
+//         rlPL.add("Name (as String): " +
+//           rlPL.add(rl..getNameAsString());
+//         rlPL.add("No. Requests: " + rlPL.add(rl..getRequestsCount());
+//         rlPL.add("No. Read Requests: " +
+//           rlPL.add(rl..getReadRequestsCount());
+//         rlPL.add("No. Write Requests: " +
+//           rlPL.add(rl..getWriteRequestsCount());
+//         rlPL.add("No. Stores: " + rlPL.add(rl..getStores());
+//         rlPL.add("No. Storefiles: " + rlPL.add(rl..getStorefiles());
+//         rlPL.add("Data Locality: " + rlPL.add(rl..getDataLocality());
+//         rlPL.add("Storefile Size (MB): " +
+//           rlPL.add(rl..getStorefileSizeMB());
+//         rlPL.add("Storefile Index Size (MB): " +
+//           rlPL.add(rl..getStorefileIndexSizeMB());
+//         rlPL.add("Memstore Size (MB): " +
+//           rlPL.add(rl..getMemStoreSizeMB());
+//         rlPL.add("Root Index Size: " +
+//           rlPL.add(rl..getRootIndexSizeKB());
+//         rlPL.add("Total Bloom Size: " +
+//           rlPL.add(rl..getTotalStaticBloomSizeKB());
+//         rlPL.add("Total Index Size: " +
+//           rlPL.add(rl..getTotalStaticIndexSizeKB());
+//         rlPL.add("Current Compacted Cells: " +
+//           rlPL.add(rl..getCurrentCompactedKVs());
+//         rlPL.add("Total Compacting Cells: " +
+//           rlPL.add(rl..getTotalCompactingKVs());
+//         rlPL.add();
 //       }
 //     }
 //     // ^^ ClusterStatusExample

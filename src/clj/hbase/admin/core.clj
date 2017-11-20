@@ -1,5 +1,6 @@
 (ns hbase.admin.core
   (:require [clojure.java [io :as io]]
+            [clojure.string :as str]
             [clojure.tools.logging :as log]
             [clojure.java.data :refer [from-java]])
   (:import [java.io InputStream]
@@ -116,6 +117,28 @@
 (defn get-cluster-status
   [^Admin admin]
   (HBaseClusterStatus/get admin))
+
+(defn get-servers-load
+  [^Admin admin]
+  (HBaseClusterStatus/getServersLoad admin))
+
+(defn get-regions-load
+  [^Admin admin]
+  (let [sl (get-servers-load admin)]
+    (mapcat (fn [x] (:regions-load x)) sl)))
+
+(defn get-tables-load
+  [^Admin admin]
+  (let [rl (get-regions-load admin)]
+    (reduce
+      (fn [acc x]
+        (let [tn (get (str/split (:name-as-string x) #"," 2) 0)
+              ktn (keyword tn)
+              x* (assoc x :nb-regions 1)]
+          (if-let [tdata (ktn acc)]
+            (assoc acc ktn (merge-with + tdata (dissoc x* :data-locality :name-as-string)))
+            (assoc acc ktn (dissoc x* :data-locality :name-as-string)))))
+      {} rl)))
 
 ;;Tables
 

@@ -1,12 +1,12 @@
 (def hadoop-version "2.7.3")
 (def hbase-version "1.1.3")
 
-(defproject luhhujbb/hbase-admin "0.1.4"
+(defproject luhhujbb/hbase-admin "0.1.5"
   :description "A library to administer hbase"
   :url "https://github.com/luhhujbb/clj-hbase-admin"
   :license {:name "Eclipse Public License"
             :url "http://www.eclipse.org/legal/epl-v10.html"}
-  :dependencies [[org.clojure/clojure "1.7.0"]
+  :dependencies [[org.clojure/clojure "1.8.0"]
                  [org.clojure/tools.logging "0.3.1"]
                  [org.clojure/java.data "0.1.1"]
                  [org.clojure/tools.cli "0.3.1"]
