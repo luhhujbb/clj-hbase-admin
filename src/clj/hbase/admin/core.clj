@@ -135,6 +135,36 @@
           (= server (:host (:server x))))
         (HBaseClusterStatus/getServersLoad admin)))))
 
+(defn table-reducer
+  [acc x]
+        (let [tn (get (str/split (:name-as-string x) #"," 2) 0)
+              ktn (keyword tn)
+              x* (assoc x :nb-regions 1)]
+          (if-let [tdata (ktn acc)]
+            (assoc acc ktn (merge-with + tdata (dissoc x* :data-locality :name-as-string)))
+            (assoc acc ktn (dissoc x* :data-locality :name-as-string)))))
+
+(defn get-server-tables-load
+  [^Admin admin server]
+    (let [rl (:regions-load
+      (first (filter
+        (fn [x]
+          (= server (:host (:server x))))
+            (HBaseClusterStatus/getServersLoad admin))))]
+            (reduce
+              table-reducer
+              {} rl)))
+
+(defn get-server-tables-load-diff
+  [^Admin admin server]
+  (let [rl1 (get-server-tables-load admin server)]
+    (Thread/sleep (* 2 1000))
+    (merge-with
+        (fn [a b]
+          (merge-with - a b))
+        (get-server-tables-load admin server)
+        rl1)))
+
 (defn get-table-regions-load
   [^Admin admin table]
       (filter
@@ -146,13 +176,7 @@
   [^Admin admin]
   (let [rl (get-regions-load admin)]
     (reduce
-      (fn [acc x]
-        (let [tn (get (str/split (:name-as-string x) #"," 2) 0)
-              ktn (keyword tn)
-              x* (assoc x :nb-regions 1)]
-          (if-let [tdata (ktn acc)]
-            (assoc acc ktn (merge-with + tdata (dissoc x* :data-locality :name-as-string)))
-            (assoc acc ktn (dissoc x* :data-locality :name-as-string)))))
+      table-reducer
       {} rl)))
 
 ;;Tables
