@@ -42,7 +42,35 @@ lein do clean, install
 
 ```
 
-## Exmaple 3: table management
+## Example 3: get cluster load
+
+```clojure
+(let [admin (hbase/get-admin (hbase/get-connection "my-hbase"))]
+  ;;return basic cluster status and global load
+  (hbase/get-cluster-status admin)
+
+  ;;return detailed servers load including regions load
+  (hbase/get-servers-load admin)
+
+  ;;return detailed regions load (extrated from get-servers-load)
+  (hbase/get-regions-load admin)
+
+	;;shortcut function with interesting grouping from get-server-load
+
+  ;;return detailed regions load for a single server
+  (hbase/get-server-regions-load admin server)
+
+	;;return detailed regions load for a single table
+  (hbase/get-table-regions-load admin server)
+
+	;;return detailed tables load for a single server
+  (hbase/get-server-tables-load admin server)
+
+	;;return detailed tables load
+  (hbase/get-tables-load admin server))
+```
+
+## Exmaple 4: table management
 
 ```clojure
 (let [admin (hbase/get-admin (hbase/get-connection "my-hbase"))]
@@ -53,7 +81,7 @@ lein do clean, install
   (hbase/delete-table admin "my-table"))
 ```
 
-## Example 4: make table snapshot
+## Example 5: make table snapshot
 
 ```clojure
 (let [admin (hbase/get-admin (hbase/get-connection "my-hbase"))]
