@@ -63,6 +63,9 @@ lein do clean, install
 	;;return detailed regions load for a single table
   (hbase/get-table-regions-load admin server)
 
+	;;return detailed tables load per regions server
+  (hbase/get-servers-tables-load admin server)
+
 	;;return detailed tables load for a single server
   (hbase/get-server-tables-load admin server)
 

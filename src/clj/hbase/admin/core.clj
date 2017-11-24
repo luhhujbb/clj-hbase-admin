@@ -155,6 +155,17 @@
               table-reducer
               {} rl)))
 
+(defn get-servers-tables-load
+  [^Admin admin]
+    (map (fn [x]
+            (let [rl (:regions-load x)]
+              {:host (:host (:server x))
+               :tables-load
+                (reduce
+                table-reducer
+                {} rl)}))
+            (HBaseClusterStatus/getServersLoad admin)))
+
 (defn get-server-tables-load-diff
   [^Admin admin server]
   (let [rl1 (get-server-tables-load admin server)]
