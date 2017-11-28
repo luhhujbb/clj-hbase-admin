@@ -11,7 +11,7 @@
            [org.apache.hadoop.hbase HBaseConfiguration TableName Cell
            CellUtil HTableDescriptor HColumnDescriptor KeyValue KeyValue$Type
            ClusterStatus ServerLoad]
-           [org.apache.hadoop.hbase.client ConnectionFactory Admin Get Put Delete Increment Table Result]
+           [org.apache.hadoop.hbase.client Connection ConnectionFactory Admin Get Put Delete Increment Table Result BufferedMutator Mutation Scan ResultScanner]
            [org.apache.hadoop.hbase.protobuf.generated HBaseProtos$SnapshotDescription]
            [org.apache.hadoop.hbase.snapshot ExportSnapshot	SnapshotCreationException]
            [eu.rtgi.hbase.admin HBaseClusterStatus]))
@@ -71,7 +71,7 @@
   "Make a connection and store it into registry"
   [name ^HBaseConfiguration conf]
   (try
-    (let [connection (ConnectionFactory/createConnection conf)]
+    (let [^Connection connection (ConnectionFactory/createConnection conf)]
       (swap! hbase-config-registry assoc name conf)
       (swap! hbase-connection-registry assoc name connection))
     (catch java.io.IOException e
@@ -274,15 +274,20 @@
     (.close table)
     res))
 
-(defn put-row
-  "Put a row to a table"
-  [connection table-name row-key mcells & [ts?]]
-  (let [^Table table (get-table connection table-name)
-        ^Put put-specs (Put. row-key)]
+(defn mk-put
+  [row-key mcells & [ts?]]
+  (let [^Put put-specs (Put. row-key)]
         (doseq [mcell mcells]
           (if-not ts?
             (.addColumn put-specs (:family mcell) (:qualifier mcell) (:value mcell))
             (.addColumn put-specs (:family mcell) (:qualifier mcell) (:timestamp mcell) (:value mcell))))
+  put-specs))
+
+(defn put-row
+  "Put a row to a table"
+  [connection table-name row-key mcells & [ts?]]
+  (let [^Table table (get-table connection table-name)
+        ^Put put-specs (mk-put row-key mcells ts?)]
         (try
           (.put table put-specs)
           (.close table)
@@ -318,21 +323,107 @@
         (log/error "Error while getting row" e)
         "error"))))
 
-(defn delete-row
-  "Delete a row"
-  [connection table-name row-key & [mcells ts?]]
-  (let [^Table table (get-table connection table-name)
-        ^Delete del-specs (Delete. row-key)]
+(defn mk-delele
+  [row-key & [mcells ts?]]
+  (let [^Delete del-specs (Delete. row-key)]
         (when mcells
           (doseq [mcell mcells]
           (if-not ts?
             (.addColumns del-specs (:family mcell) (:qualifier mcell))
             (.addColumn del-specs (:family mcell) (:qualifier mcell) (:timestamp mcell)))))
+    del-specs))
+
+(defn delete-row
+  "Delete a row"
+  [connection table-name row-key & [mcells ts?]]
+  (let [^Table table (get-table connection table-name)
+        ^Delete del-specs (mk-delele row-key mcells ts?)]
     (try
           (.delete table del-specs)
           (.close table)
       (catch Exception e
         (log/error "Error while deleting row" e)))))
+
+;;Buffered mutation
+
+(defn buffered-muttator
+  [^Connection conn table-name]
+  (.getBufferedMutator (TableName/valueOf table-name)))
+
+(defn bm-mutate
+  [^BufferedMutator bm ^Mutation m]
+  (.mutate bm m))
+
+(defn bm-flush
+  [^BufferedMutator bm]
+  (.flush bm))
+
+(defn bm-close
+  [^BufferedMutator bm]
+  (.close bm))
+
+
+;;Scan
+(defn mk-scan
+  [mcells {:keys [start-row stop-row min-ts max-ts]
+           :or {min-ts 0 max-ts (Long/MAX_VALUE)}
+           :as specs}]
+  (let [^Scan scan-specs (Scan.)]
+    (doseq [{:keys [family qualifier]} mcells]
+      (if-not (nil? qualifier)
+        (.addColumn scan-specs family qualifier))
+        (.addFamily scan-specs family))
+    (let [^Scan scan-specs* (if start-row
+                        (.setStartRow scan-specs start-row) ;;this method is deprecated -> to be replaced by withStartRow
+                        scan-specs)
+          ^Scan scan-specs* (if stop-row
+                              (.setStopRow scan-specs* stop-row) ;;this method is deprecated -> to be replaced by withStopRow
+                              scan-specs*)
+          ^Scan scan-specs* (.setTimeRange scan-specs* min-ts max-ts)] ;;this method is deprecated -> to be replaced by withTimeRange
+      scan-specs*)))
+
+(defn scanner
+  [^Connection conn table-name mcells specs]
+  (let [^Table table (.getTable conn (TableName/valueOf table-name))
+        ^Scan scan-specs (mk-scan mcells specs)]
+    {:table table
+     :result-scanner (.getScanner table scan-specs)}))
+
+(defn sc-next
+  [{:keys [^ResultScanner result-scanner]} nb-rows]
+    (try
+      (let [^Result result (.next result-scanner)
+          ^List<Cell> cells (.listCells result)]
+          (map cell->map cells))
+        (catch Exception e
+            (log/error "Error while getting row" e)
+            "error")))
+
+(defn sc-nexts
+  [{:keys [^ResultScanner result-scanner]} nb-rows]
+  (try
+    (let [^Result results (.next result-scanner (int nb-rows))]
+          (map
+            (fn [^Result result]
+              (let [^List<Cell> cells (.listCells result)]
+                    (map cell->map cells)))
+            results))
+    (catch Exception e
+      (log/error "Error while getting row" e)
+      "error")))
+
+(defn sc-iterator
+  [{:keys [^ResultScanner result-scanner]}]
+  (try
+    (.iterator result-scanner)
+    (catch Exception e
+      (log/error "Error while getting row" e)
+      "error")))
+
+(defn sc-close
+  [{:keys [^ResultScanner result-scanner ^Table table]}]
+  (.close result-scanner)
+  (.close table))
 
 ;;Snapshots
 

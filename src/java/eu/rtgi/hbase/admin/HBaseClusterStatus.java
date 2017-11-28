@@ -8,6 +8,7 @@ import java.util.List;
 import java.util.Collection;
 
 import clojure.lang.PersistentHashMap;
+import clojure.lang.ITransientMap;
 import clojure.lang.PersistentList;
 import clojure.lang.PersistentVector;
 import clojure.lang.Keyword;
@@ -33,12 +34,10 @@ public class HBaseClusterStatus {
   }
 
   private static PersistentHashMap getServerMap(ServerName server){
-    ArrayList<Object> sPL = new ArrayList<Object>();
-    sPL.add(kw("host"));
-    sPL.add(server.getHostname());
-    sPL.add(kw("port"));
-    sPL.add(server.getPort());
-    return map(sPL);
+    ITransientMap itmap = PersistentHashMap.EMPTY.asTransient();
+    itmap.assoc(kw("host"),server.getHostname());
+    itmap.assoc(kw("port"),server.getPort());
+    return (PersistentHashMap) itmap.persistent();
   }
 
   private static PersistentVector getServerList(Collection<ServerName> slist){
@@ -50,52 +49,35 @@ public class HBaseClusterStatus {
   }
 
   private static PersistentHashMap getRegionInfoMap(HRegionInfo rIn){
-    ArrayList<Object> rInL = new ArrayList<Object>();
-    rInL.add(kw("encoded-name"));
-    rInL.add(rIn.getEncodedName());
-    rInL.add(kw("region-name"));
-    rInL.add(rIn.getRegionNameAsString());
-    rInL.add(kw("table-name"));
-    rInL.add(rIn.getTable().getNameAsString());
-    rInL.add(kw("table-namespace"));
-    rInL.add(rIn.getTable().getNamespaceAsString());
-    return map(rInL);
+    ITransientMap itmap = PersistentHashMap.EMPTY.asTransient();
+    itmap.assoc(kw("encoded-name"),rIn.getEncodedName());
+    itmap.assoc(kw("region-name"),rIn.getRegionNameAsString());
+    itmap.assoc(kw("table-name"),rIn.getTable().getNameAsString());
+    itmap.assoc(kw("table-namespace"),rIn.getTable().getNamespaceAsString());
+    return (PersistentHashMap) itmap.persistent();
   }
 
 
   private static PersistentHashMap getRegionStateMap(RegionState rSt){
-    ArrayList<Object> rStL = new ArrayList<Object>();
+    ITransientMap itmap = PersistentHashMap.EMPTY.asTransient();
     PersistentHashMap sm = null;
     if(rSt.getServerName() != null){
       sm = getServerMap(rSt.getServerName());
     }
-    rStL.add(kw("server"));
-    rStL.add(sm);
-    rStL.add(kw("is-closed"));
-    rStL.add(rSt.isClosed());
-    rStL.add(kw("is-closing"));
-    rStL.add(rSt.isClosing());
-    rStL.add(kw("is-failed-close"));
-    rStL.add(rSt.isFailedClose());
-    rStL.add(kw("is-failed-open"));
-    rStL.add(rSt.isFailedOpen());
-    rStL.add(kw("is-merged"));
-    rStL.add(rSt.isMerged());
-    rStL.add(kw("is-merging"));
-    rStL.add(rSt.isMerging());
-    rStL.add(kw("is-opened"));
-    rStL.add(rSt.isOpened());
-    rStL.add(kw("is-split"));
-    rStL.add(rSt.isSplit());
-    rStL.add(kw("is-splitting"));
-    rStL.add(rSt.isSplitting());
-    rStL.add(kw("is-offline"));
-    rStL.add(rSt.isOffline());
-    rStL.add(kw("state"));
-    rStL.add(rSt.getState().toString());
-    rStL.add(kw("region-info"));
-    rStL.add(getRegionInfoMap(rSt.getRegion()));
-    return map(rStL);
+    itmap.assoc(kw("server"),sm);
+    itmap.assoc(kw("is-closed"),rSt.isClosed());
+    itmap.assoc(kw("is-closing"),rSt.isClosing());
+    itmap.assoc(kw("is-failed-close"),rSt.isFailedClose());
+    itmap.assoc(kw("is-failed-open"),rSt.isFailedOpen());
+    itmap.assoc(kw("is-merged"),rSt.isMerged());
+    itmap.assoc(kw("is-merging"),rSt.isMerging());
+    itmap.assoc(kw("is-opened"),rSt.isOpened());
+    itmap.assoc(kw("is-split"),rSt.isSplit());
+    itmap.assoc(kw("is-splitting"),rSt.isSplitting());
+    itmap.assoc(kw("is-offline"),rSt.isOffline());
+    itmap.assoc(kw("state"),rSt.getState().toString());
+    itmap.assoc(kw("region-info"),getRegionInfoMap(rSt.getRegion()));
+    return (PersistentHashMap) itmap.persistent();
   }
 
   private static PersistentVector getRegionStateList(Map<String,RegionState> rStlist){
@@ -108,73 +90,43 @@ public class HBaseClusterStatus {
 
   public static PersistentHashMap get(Admin admin) throws IOException, InterruptedException{
     ClusterStatus st = admin.getClusterStatus();
-    ArrayList<Object> cSL = new ArrayList<Object>();
-    cSL.add(kw("hbase-version"));
-    cSL.add(st.getHBaseVersion());
-    cSL.add(kw("version"));
-    cSL.add(st.getVersion());
-    cSL.add(kw("cluster-id"));
-    cSL.add(st.getClusterId());
-    cSL.add(kw("master"));
-    cSL.add(getServerMap(st.getMaster()));
-    cSL.add(kw("nb-master-backup"));
-    cSL.add(st.getBackupMastersSize());
-    cSL.add(kw("backup-masters"));
-    cSL.add(getServerList(st.getBackupMasters()));
-    cSL.add(kw("nb-live-servers"));
-    cSL.add(st.getServersSize());
-    cSL.add(kw("live-servers"));
-    cSL.add(getServerList(st.getServers()));
-    cSL.add(kw("nb-dead-servers"));
-    cSL.add(st.getDeadServerNames().size());
-    cSL.add(kw("dead-servers"));
-    cSL.add(getServerList(st.getDeadServerNames()));
-    cSL.add(kw("nb-regions"));
-    cSL.add(st.getRegionsCount());
-    cSL.add(kw("regions-in-transitions"));
-    cSL.add(getRegionStateList(st.getRegionsInTransition()));
-    cSL.add(kw("nb-requests"));
-    cSL.add(st.getRequestsCount());
-    cSL.add(kw("is-balancer-on"));
-    cSL.add(st.isBalancerOn());
-    cSL.add(kw("average-load"));
-    cSL.add(st.getAverageLoad());
-    return map(cSL);
+    ITransientMap itmap = PersistentHashMap.EMPTY.asTransient();
+    itmap.assoc(kw("hbase-version"),st.getHBaseVersion());
+    itmap.assoc(kw("version"),st.getVersion());
+    itmap.assoc(kw("cluster-id"),st.getClusterId());
+    itmap.assoc(kw("master"),getServerMap(st.getMaster()));
+    itmap.assoc(kw("nb-master-backup"),st.getBackupMastersSize());
+    itmap.assoc(kw("backup-masters"),getServerList(st.getBackupMasters()));
+    itmap.assoc(kw("nb-live-servers"),st.getServersSize());
+    itmap.assoc(kw("live-servers"),getServerList(st.getServers()));
+    itmap.assoc(kw("nb-dead-servers"),st.getDeadServerNames().size());
+    itmap.assoc(kw("dead-servers"),getServerList(st.getDeadServerNames()));
+    itmap.assoc(kw("nb-regions"),st.getRegionsCount());
+    itmap.assoc(kw("regions-in-transitions"),getRegionStateList(st.getRegionsInTransition()));
+    itmap.assoc(kw("nb-requests"),st.getRequestsCount());
+    itmap.assoc(kw("is-balancer-on"),st.isBalancerOn());
+    itmap.assoc(kw("average-load"),st.getAverageLoad());
+    return (PersistentHashMap) itmap.persistent();
   }
 
   public static PersistentHashMap getRegionLoadMap(RegionLoad rl){
-    ArrayList<Object> rlPL = new ArrayList<Object>();
-    rlPL.add(kw("name-as-string"));
-    rlPL.add(rl.getNameAsString());
-    rlPL.add(kw("nb-requests"));
-    rlPL.add(rl.getRequestsCount());
-    rlPL.add(kw("nb-read-requests"));
-    rlPL.add(rl.getReadRequestsCount());
-    rlPL.add(kw("nb-write-requests"));
-    rlPL.add(rl.getWriteRequestsCount());
-    rlPL.add(kw("nb-stores"));
-    rlPL.add(rl.getStores());
-    rlPL.add(kw("nb-stores-files"));
-    rlPL.add(rl.getStorefiles());
-    rlPL.add(kw("data-locality"));
-    rlPL.add(rl.getDataLocality());
-    rlPL.add(kw("store-file-size-mb"));
-    rlPL.add(rl.getStorefileSizeMB());
-    rlPL.add(kw("store-file-index-size-mb"));
-    rlPL.add(rl.getStorefileIndexSizeMB());
-    rlPL.add(kw("memstore-size-mb"));
-    rlPL.add(rl.getMemStoreSizeMB());
-    rlPL.add(kw("root-index-size-kb"));
-    rlPL.add(rl.getRootIndexSizeKB());
-    rlPL.add(kw("total-static-bloom-size-kb"));
-    rlPL.add(rl.getTotalStaticBloomSizeKB());
-    rlPL.add(kw("total-static-index-size-kb"));
-    rlPL.add(rl.getTotalStaticIndexSizeKB());
-    rlPL.add(kw("current-compacted-kvs"));
-    rlPL.add(rl.getCurrentCompactedKVs());
-    rlPL.add(kw("total-compacting-kvs"));
-    rlPL.add(rl.getTotalCompactingKVs());
-    return map(rlPL);
+    ITransientMap itmap = PersistentHashMap.EMPTY.asTransient();
+    itmap.assoc(kw("name-as-string"),rl.getNameAsString());
+    itmap.assoc(kw("nb-requests"),rl.getRequestsCount());
+    itmap.assoc(kw("nb-read-requests"),rl.getReadRequestsCount());
+    itmap.assoc(kw("nb-write-requests"),rl.getWriteRequestsCount());
+    itmap.assoc(kw("nb-stores"),rl.getStores());
+    itmap.assoc(kw("nb-stores-files"),rl.getStorefiles());
+    itmap.assoc(kw("data-locality"),rl.getDataLocality());
+    itmap.assoc(kw("store-file-size-mb"),rl.getStorefileSizeMB());
+    itmap.assoc(kw("store-file-index-size-mb"),rl.getStorefileIndexSizeMB());
+    itmap.assoc(kw("memstore-size-mb"),rl.getMemStoreSizeMB());
+    itmap.assoc(kw("root-index-size-kb"),rl.getRootIndexSizeKB());
+    itmap.assoc(kw("total-static-bloom-size-kb"),rl.getTotalStaticBloomSizeKB());
+    itmap.assoc(kw("total-static-index-size-kb"),rl.getTotalStaticIndexSizeKB());
+    itmap.assoc(kw("current-compacted-kvs"),rl.getCurrentCompactedKVs());
+    itmap.assoc(kw("total-compacting-kvs"),rl.getTotalCompactingKVs());
+    return (PersistentHashMap) itmap.persistent();
   }
 
   public static PersistentVector getRegionsLoadPV(Map<byte[],RegionLoad> rls){
@@ -186,56 +138,33 @@ public class HBaseClusterStatus {
   }
 
   public static PersistentHashMap getServerLoad(ClusterStatus st, ServerName server) throws IOException, InterruptedException{
-    ArrayList<Object> sLPL = new ArrayList<Object>();
-    ArrayList<Object> sLIPL = new ArrayList<Object>();
-    sLPL.add(kw("server"));
-    sLPL.add(getServerMap(server));
+    ITransientMap itmap = PersistentHashMap.EMPTY.asTransient();
+    ITransientMap itmapl = PersistentHashMap.EMPTY.asTransient();
+    itmap.assoc(kw("server"),getServerMap(server));
     ServerLoad load = st.getLoad(server);
-    sLPL.add(kw("load-info"));
-    sLIPL.add(kw("nb-regions"));
-    sLIPL.add(load.getNumberOfRegions());
-    sLIPL.add(kw("nb-requests"));
-    sLIPL.add(load.getNumberOfRequests());
-    sLIPL.add(kw("nb-read-requests"));
-    sLIPL.add(load.getReadRequestsCount());
-    sLIPL.add(kw("nb-write-requests"));
-    sLIPL.add(load.getWriteRequestsCount());
-    sLIPL.add(kw("memstore-size-mb"));
-    sLIPL.add(load.getMemstoreSizeInMB());
-    sLIPL.add(kw("requests-per-second"));
-    sLIPL.add(load.getRequestsPerSecond());
-    sLIPL.add(kw("nb-stores"));
-    sLIPL.add(load.getStores());
-    sLIPL.add(kw("uncompressed-store-size-mb"));
-    sLIPL.add(load.getStoreUncompressedSizeMB());
-    sLIPL.add(kw("nb-store-files"));
-    sLIPL.add(load.getStorefiles());
-    sLIPL.add(kw("store-file-size-mb"));
-    sLIPL.add(load.getStorefileSizeInMB());
-    sLIPL.add(kw("store-file-index-size-mb"));
-    sLIPL.add(load.getStorefileIndexSizeInMB());
-    sLIPL.add(kw("root-index-size-kb"));
-    sLIPL.add(load.getRootIndexSizeKB());
-    sLIPL.add(kw("total-static-bloom-size-kb"));
-    sLIPL.add(load.getTotalStaticBloomSizeKB());
-    sLIPL.add(kw("total-static-index-size-kb"));
-    sLIPL.add(load.getTotalStaticIndexSizeKB());
-    sLIPL.add(kw("current-compacted-kvs"));
-    sLIPL.add(load.getCurrentCompactedKVs());
-    sLIPL.add(kw("total-compacting-kvs"));
-    sLIPL.add(load.getTotalCompactingKVs());
-    sLIPL.add(kw("rs-coprocessor"));
-    sLIPL.add(PersistentVector.adopt((Object[]) load.getRegionServerCoprocessors()));
-    sLIPL.add(kw("rs-coprocessor-region-level"));
-    sLIPL.add(PersistentVector.adopt((Object[]) load.getRsCoprocessors()));
-    sLIPL.add(kw("max-heap-mb"));
-    sLIPL.add(load.getMaxHeapMB());
-    sLIPL.add(kw("used-heap-mb"));
-    sLIPL.add(load.getUsedHeapMB());
-    sLPL.add(map(sLIPL));
-    sLPL.add(kw("regions-load"));
-    sLPL.add(getRegionsLoadPV(load.getRegionsLoad()));
-    return map(sLPL);
+    itmapl.assoc(kw("nb-regions"),load.getNumberOfRegions());
+    itmapl.assoc(kw("nb-requests"),load.getNumberOfRequests());
+    itmapl.assoc(kw("nb-read-requests"),load.getReadRequestsCount());
+    itmapl.assoc(kw("nb-write-requests"),load.getWriteRequestsCount());
+    itmapl.assoc(kw("memstore-size-mb"),load.getMemstoreSizeInMB());
+    itmapl.assoc(kw("requests-per-second"),load.getRequestsPerSecond());
+    itmapl.assoc(kw("nb-stores"),load.getStores());
+    itmapl.assoc(kw("uncompressed-store-size-mb"),load.getStoreUncompressedSizeMB());
+    itmapl.assoc(kw("nb-store-files"),load.getStorefiles());
+    itmapl.assoc(kw("store-file-size-mb"),load.getStorefileSizeInMB());
+    itmapl.assoc(kw("store-file-index-size-mb"),load.getStorefileIndexSizeInMB());
+    itmapl.assoc(kw("root-index-size-kb"),load.getRootIndexSizeKB());
+    itmapl.assoc(kw("total-static-bloom-size-kb"),load.getTotalStaticBloomSizeKB());
+    itmapl.assoc(kw("total-static-index-size-kb"),load.getTotalStaticIndexSizeKB());
+    itmapl.assoc(kw("current-compacted-kvs"),load.getCurrentCompactedKVs());
+    itmapl.assoc(kw("total-compacting-kvs"),load.getTotalCompactingKVs());
+    itmapl.assoc(kw("rs-coprocessor"),PersistentVector.adopt((Object[]) load.getRegionServerCoprocessors()));
+    itmapl.assoc(kw("rs-coprocessor-region-level"),PersistentVector.adopt((Object[]) load.getRsCoprocessors()));
+    itmapl.assoc(kw("max-heap-mb"),load.getMaxHeapMB());
+    itmapl.assoc(kw("used-heap-mb"),load.getUsedHeapMB());
+    itmap.assoc(kw("load-info"),(PersistentHashMap) itmapl.persistent());
+    itmap.assoc(kw("regions-load"),getRegionsLoadPV(load.getRegionsLoad()));
+    return (PersistentHashMap) itmap.persistent();
   }
 
   public static PersistentVector getServersLoad(Admin admin) throws IOException, InterruptedException{
