@@ -116,7 +116,7 @@ lein do clean, install
 ```clojure
 ;;create row
 (hbase/put-row
-	(hbase/getconnection "my-hbase")
+	(hbase/get-connection "my-hbase")
 	"my-table"
 	(.getBytes "my-row-key")
 	[{:family (.getBytes "my-family-1")
@@ -128,13 +128,13 @@ lein do clean, install
 
 ;;get-row
 (hbase/get-row
-	(hbase/getconnection "my-hbase")
+	(hbase/get-connection "my-hbase")
 	"my-table"
 	(.getBytes "my-row-key"))
 
 ;;delete row
 (hbase/delete-row
-	(hbase/getconnection "my-hbase")
+	(hbase/get-connection "my-hbase")
 	"my-table"
 	(.getBytes "my-row-key"))
 ```
