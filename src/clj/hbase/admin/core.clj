@@ -89,7 +89,7 @@
 (defn get-connection
   "Return a connection given a hbase name"
   [hbase-name]
-  (if-let [connection (get @hbase-connection-registry hbase-name nil)]
+  (if-let [^Connection connection (get @hbase-connection-registry hbase-name nil)]
     (if (.isClosed connection)
       (do
         (init-hbase-connection hbase-name (get @hbase-config-registry hbase-name))
@@ -105,12 +105,12 @@
 
 (defn get-admin
   "Retrieve an Admin implementation to administer an HBase cluster."
-  [connection]
+  [^Connection connection]
   (.getAdmin connection))
 
 (defn get-table
   "Retrieve a Table implementation for accessing a table."
-  [connection table-name]
+  [^Connection connection ^String table-name]
   (.getTable connection (TableName/valueOf table-name)))
 
 ;;Cluster
@@ -206,18 +206,18 @@
 (defn list-tables-name-as-string
   [^Admin admin]
   "List all of the names as string of userspace tables."
-  (into [] (map (fn [x] (.getNameAsString x)) (.listTableNames admin))))
+  (into [] (map (fn [^TableName x] (.getNameAsString x)) (.listTableNames admin))))
 
 (defn get-table-details
   ([^HTableDescriptor table]
     {:name (.getNameAsString table)
-     :column-families (into [] (map (fn [x]
+     :column-families (into [] (map (fn [^HColumnDescriptor x]
                                           {:name (.getNameAsString x)
                                            :compression (.getName
                                                           (.getCompression x))
                                            :bloomfilter (.toString
                                                           (.getBloomFilterType x))}) (.getFamilies table)))})
-  ([^Admin admin table-name]
+  ([^Admin admin ^String table-name]
    (get-table-details (.getTableDescriptor admin (TableName/valueOf table-name)))))
 
  (defn list-tables-details
@@ -228,33 +228,33 @@
 
 (defn disable-table
   "Disable Table"
-  [^Admin admin table-name]
+  [^Admin admin ^String table-name]
   (.disableTable admin (TableName/valueOf table-name)))
 
 (defn delete-table
   "Delete Table"
-  [^Admin admin table-name]
+  [^Admin admin ^String table-name]
   (disable-table admin table-name)
   (.deleteTable admin (TableName/valueOf table-name)))
 
 (defn create-table
   "Create table"
-  [^Admin admin table-name column-families]
+  [^Admin admin ^String table-name column-families]
   (let [^HTableDescriptor table (HTableDescriptor. (TableName/valueOf table-name))]
-    (doseq [family column-families]
+    (doseq [^String family column-families]
       (.addFamily table (HColumnDescriptor. family)))
     (.createTable admin table)))
 
 (defn compact-table
-  [^Admin admin table-name]
+  [^Admin admin ^String table-name]
   (.compact admin (TableName/valueOf table-name)))
 
 (defn major-compact-table
-  [^Admin admin table-name]
+  [^Admin admin ^String table-name]
   (.majorCompact admin (TableName/valueOf table-name)))
 
 (defn table-compaction-state
-  [^Admin admin table-name]
+  [^Admin admin ^String table-name]
   (.toString (.getCompactionState admin (TableName/valueOf table-name))))
 
 ;;Row
@@ -280,7 +280,7 @@
 
 (defn exist?
   "Indicate if a row exists or not"
-  [connection table-name row-key]
+  [^Connection connection ^String table-name row-key]
   (let [^Table table (get-table connection table-name)
         ^Get get (Get. row-key)
         res (.exists table get)]
