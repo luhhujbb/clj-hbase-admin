@@ -1,7 +1,7 @@
 (def hadoop-version "2.7.4")
-(def hbase-version "1.1.7")
+(def hbase-version "3.0.0-SNAPSHOT")
 
-(defproject luhhujbb/hbase-admin "0.1.11"
+(defproject luhhujbb/hbase-admin "3.0.0-SNAPSHOT"
   :description "A library to administer hbase"
   :url "https://github.com/luhhujbb/clj-hbase-admin"
   :license {:name "Eclipse Public License"
@@ -19,10 +19,11 @@
                  [org.apache.hadoop/hadoop-client ~hadoop-version]
                  [org.apache.hadoop/hadoop-mapreduce-client-core ~hadoop-version]
                  [org.apache.hbase/hbase-client ~hbase-version]
-                 [org.apache.hbase/hbase-server ~hbase-version]
+                 [org.apache.hbase/hbase-server ~hbase-version :exclusions [org.glassfish/javax.el]]
                  [org.apache.hbase/hbase-protocol ~hbase-version]
                  [org.apache.hbase/hbase ~hbase-version :extension "pom"]
                  [amazonica "0.3.111"]]
+  :repositories {"apache-repo" {:url "https://repository.apache.org/content/repositories/snapshots"}}
   :source-paths ["src/clj"]
   :java-source-paths ["src/java"]
   :aot :all)

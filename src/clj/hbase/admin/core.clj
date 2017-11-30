@@ -387,12 +387,12 @@
         (.addColumn scan-specs family qualifier))
         (.addFamily scan-specs family))
     (let [^Scan scan-specs* (if start-row
-                        (.setStartRow scan-specs start-row) ;;this method is deprecated -> to be replaced by withStartRow
+                        (.withStartRow scan-specs start-row) ;;this method is deprecated -> to be replaced by withStartRow
                         scan-specs)
           ^Scan scan-specs* (if stop-row
-                              (.setStopRow scan-specs* stop-row) ;;this method is deprecated -> to be replaced by withStopRow
+                              (.withStopRow scan-specs* stop-row) ;;this method is deprecated -> to be replaced by withStopRow
                               scan-specs*)
-          ^Scan scan-specs* (.setTimeRange scan-specs* min-ts max-ts)] ;;this method is deprecated -> to be replaced by withTimeRange
+          ^Scan scan-specs* (.setTimeRange scan-specs* min-ts max-ts)]
       scan-specs*)))
 
 (defn scanner

@@ -80,10 +80,10 @@ public class HBaseClusterStatus {
     return (PersistentHashMap) itmap.persistent();
   }
 
-  private static PersistentVector getRegionStateList(Map<String,RegionState> rStlist){
+  private static PersistentVector getRegionStateList(List<RegionState> rStlist){
     ArrayList<Object> sL = new ArrayList<Object>();
-    for (Map.Entry<String,RegionState> entry : rStlist.entrySet()){
-      sL.add(getRegionStateMap(entry.getValue()));
+    for (RegionState regionState : rStlist){
+      sL.add(getRegionStateMap(regionState));
     }
     return PersistentVector.create(sL);
   }
@@ -99,7 +99,7 @@ public class HBaseClusterStatus {
     itmap.assoc(kw("backup-masters"),getServerList(st.getBackupMasters()));
     itmap.assoc(kw("nb-live-servers"),st.getServersSize());
     itmap.assoc(kw("live-servers"),getServerList(st.getServers()));
-    itmap.assoc(kw("nb-dead-servers"),st.getDeadServerNames().size());
+    itmap.assoc(kw("nb-dead-servers"),st.getDeadServersSize());
     itmap.assoc(kw("dead-servers"),getServerList(st.getDeadServerNames()));
     itmap.assoc(kw("nb-regions"),st.getRegionsCount());
     itmap.assoc(kw("regions-in-transitions"),getRegionStateList(st.getRegionsInTransition()));
