@@ -61,10 +61,10 @@ lein do clean, install
   (hbase/get-server-regions-load admin server)
 
 	;;return detailed regions load for a single table
-  (hbase/get-table-regions-load admin server)
+  (hbase/get-table-regions-load admin table-name)
 
 	;;return detailed tables load per regions server
-  (hbase/get-servers-tables-load admin server)
+  (hbase/get-servers-tables-load admin)
 
 	;;return detailed tables load for a single server
   (hbase/get-server-tables-load admin server)
@@ -79,6 +79,15 @@ lein do clean, install
 (let [admin (hbase/get-admin (hbase/get-connection "my-hbase"))]
   ;;create an hbase table (column faily should be shorter , typically one char long)
   (hbase/create-table admin "my-table" ["my-family-1" "my-family-2"])
+
+	;;compact a table
+	(hbase/compact-table admin "my-table")
+
+	;;major compact a table
+	(hbase/major-compact-table admin "my-table")
+
+	;;get compaction state of table
+	(hbase/table-compaction-state admin "my-table")
 
   ;;delete table
   (hbase/delete-table admin "my-table"))
@@ -100,6 +109,34 @@ lein do clean, install
   ;;Snapshot-all : create a snapshot for all table
   ;;with "my-table-my-snapshot" as per table snapshot name
   (hbase/snapshot-all admin "my-snapshot"))
+```
+
+## Example 6: basic put/get/delete operations
+
+```clojure
+;;create row
+(hbase/put-row
+	(hbase/getconnection "my-hbase")
+	"my-table"
+	(.getBytes "my-row-key")
+	[{:family (.getBytes "my-family-1")
+		:qualifier (.getBytes "my-qualifier-1")
+		:value (.getBytes "my-value-1")}
+	 {:family (.getBytes "my-family-1")
+  	:qualifier (.getBytes "my-qualifier-1")
+  	:value (.getBytes "my-value-1")}])
+
+;;get-row
+(hbase/get-row
+	(hbase/getconnection "my-hbase")
+	"my-table"
+	(.getBytes "my-row-key"))
+
+;;delete row
+(hbase/delete-row
+	(hbase/getconnection "my-hbase")
+	"my-table"
+	(.getBytes "my-row-key"))
 ```
 
 ## TODO
