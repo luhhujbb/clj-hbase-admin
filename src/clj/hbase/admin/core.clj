@@ -13,6 +13,7 @@
            ClusterStatus ServerLoad]
            [org.apache.hadoop.hbase.client Connection ConnectionFactory Admin Get Put Delete Increment Table Result BufferedMutator Mutation Scan ResultScanner]
            [org.apache.hadoop.hbase.protobuf.generated HBaseProtos$SnapshotDescription]
+           [org.apache.hadoop.hbase.protobuf.generated AdminProtos$GetRegionInfoResponse]
            [org.apache.hadoop.hbase.snapshot ExportSnapshot	SnapshotCreationException]
            [eu.rtgi.hbase.admin HBaseClusterStatus]))
 
@@ -243,6 +244,18 @@
     (doseq [family column-families]
       (.addFamily table (HColumnDescriptor. family)))
     (.createTable admin table)))
+
+(defn compact-table
+  [^Admin admin table-name]
+  (.compact admin (TableName/valueOf table-name)))
+
+(defn major-compact-table
+  [^Admin admin table-name]
+  (.majorCompact admin (TableName/valueOf table-name)))
+
+(defn table-compaction-state
+  [^Admin admin table-name]
+  (.toString (.getCompactionState admin (TableName/valueOf table-name))))
 
 ;;Row
 
