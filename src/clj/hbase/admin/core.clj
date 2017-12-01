@@ -1,8 +1,7 @@
 (ns hbase.admin.core
   (:require [clojure.java [io :as io]]
             [clojure.string :as str]
-            [clojure.tools.logging :as log]
-            [clojure.java.data :refer [from-java]])
+            [clojure.tools.logging :as log])
   (:import [java.io InputStream]
            [org.apache.hadoop.util Tool]
            [org.apache.hadoop.util ToolRunner]
