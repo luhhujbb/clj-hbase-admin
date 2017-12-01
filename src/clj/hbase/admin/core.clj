@@ -1,8 +1,7 @@
 (ns hbase.admin.core
   (:require [clojure.java [io :as io]]
             [clojure.string :as str]
-            [clojure.tools.logging :as log]
-            [clojure.java.data :refer [from-java]])
+            [clojure.tools.logging :as log])
   (:import [java.io InputStream]
            [org.apache.hadoop.util Tool]
            [org.apache.hadoop.util ToolRunner]
@@ -89,7 +88,7 @@
 (defn get-connection
   "Return a connection given a hbase name"
   [hbase-name]
-  (if-let [connection (get @hbase-connection-registry hbase-name nil)]
+  (if-let [^Connection connection (get @hbase-connection-registry hbase-name nil)]
     (if (.isClosed connection)
       (do
         (init-hbase-connection hbase-name (get @hbase-config-registry hbase-name))
@@ -105,12 +104,12 @@
 
 (defn get-admin
   "Retrieve an Admin implementation to administer an HBase cluster."
-  [connection]
+  [^Connection connection]
   (.getAdmin connection))
 
 (defn get-table
   "Retrieve a Table implementation for accessing a table."
-  [connection table-name]
+  [^Connection connection ^String table-name]
   (.getTable connection (TableName/valueOf table-name)))
 
 ;;Cluster
@@ -206,18 +205,18 @@
 (defn list-tables-name-as-string
   [^Admin admin]
   "List all of the names as string of userspace tables."
-  (into [] (map (fn [x] (.getNameAsString x)) (.listTableNames admin))))
+  (into [] (map (fn [^TableName x] (.getNameAsString x)) (.listTableNames admin))))
 
 (defn get-table-details
   ([^HTableDescriptor table]
     {:name (.getNameAsString table)
-     :column-families (into [] (map (fn [x]
+     :column-families (into [] (map (fn [^HColumnDescriptor x]
                                           {:name (.getNameAsString x)
                                            :compression (.getName
                                                           (.getCompression x))
                                            :bloomfilter (.toString
                                                           (.getBloomFilterType x))}) (.getFamilies table)))})
-  ([^Admin admin table-name]
+  ([^Admin admin ^String table-name]
    (get-table-details (.getTableDescriptor admin (TableName/valueOf table-name)))))
 
  (defn list-tables-details
@@ -228,33 +227,33 @@
 
 (defn disable-table
   "Disable Table"
-  [^Admin admin table-name]
+  [^Admin admin ^String table-name]
   (.disableTable admin (TableName/valueOf table-name)))
 
 (defn delete-table
   "Delete Table"
-  [^Admin admin table-name]
+  [^Admin admin ^String table-name]
   (disable-table admin table-name)
   (.deleteTable admin (TableName/valueOf table-name)))
 
 (defn create-table
   "Create table"
-  [^Admin admin table-name column-families]
+  [^Admin admin ^String table-name column-families]
   (let [^HTableDescriptor table (HTableDescriptor. (TableName/valueOf table-name))]
-    (doseq [family column-families]
+    (doseq [^String family column-families]
       (.addFamily table (HColumnDescriptor. family)))
     (.createTable admin table)))
 
 (defn compact-table
-  [^Admin admin table-name]
+  [^Admin admin ^String table-name]
   (.compact admin (TableName/valueOf table-name)))
 
 (defn major-compact-table
-  [^Admin admin table-name]
+  [^Admin admin ^String table-name]
   (.majorCompact admin (TableName/valueOf table-name)))
 
 (defn table-compaction-state
-  [^Admin admin table-name]
+  [^Admin admin ^String table-name]
   (.toString (.getCompactionState admin (TableName/valueOf table-name))))
 
 ;;Row
@@ -280,7 +279,7 @@
 
 (defn exist?
   "Indicate if a row exists or not"
-  [connection table-name row-key]
+  [^Connection connection ^String table-name ^bytes row-key]
   (let [^Table table (get-table connection table-name)
         ^Get get (Get. row-key)
         res (.exists table get)]
@@ -288,12 +287,12 @@
     res))
 
 (defn mk-put
-  [row-key mcells & [ts?]]
+  [^bytes row-key mcells & [ts?]]
   (let [^Put put-specs (Put. row-key)]
         (doseq [mcell mcells]
           (if-not ts?
-            (.addColumn put-specs (:family mcell) (:qualifier mcell) (:value mcell))
-            (.addColumn put-specs (:family mcell) (:qualifier mcell) (:timestamp mcell) (:value mcell))))
+            (.addColumn put-specs ^bytes (:family mcell) ^bytes (:qualifier mcell) ^bytes (:value mcell))
+            (.addColumn put-specs ^bytes (:family mcell) ^bytes (:qualifier mcell) ^Long (:timestamp mcell) ^bytes (:value mcell))))
   put-specs))
 
 (defn put-row
@@ -310,21 +309,21 @@
 (defn inc-row
   "Increments one or more columns within a single row.
   map-cells (mcells) value is converted to amount if amount keyword is absent"
-  [connection table-name row-key mcells]
+  [connection table-name ^bytes row-key mcells]
   (let [^Table table (get-table connection table-name)
         ^Increment inc-specs (Increment. row-key)]
         (doseq [mcell mcells]
           (when (integer? (or (:amount mcell) (:value mcell)))
             (.addColumn inc-specs
-              (:family mcell)
-              (:qualifier mcell)
-              (long (or (:amount mcell) (:value mcell))))))
+              ^bytes (:family mcell)
+              ^bytes (:qualifier mcell)
+              ^Long (long (or (:amount mcell) (:value mcell))))))
         (.increment table inc-specs)
         (.close table)))
 
 (defn get-row
   "Retrieve a row"
-  [connection table-name row-key]
+  [connection table-name ^bytes row-key]
   (let [^Table table (get-table connection table-name)
         ^Get get-specs (Get. row-key)]
     (try
@@ -337,13 +336,13 @@
         "error"))))
 
 (defn mk-delele
-  [row-key & [mcells ts?]]
+  [^bytes row-key & [mcells ts?]]
   (let [^Delete del-specs (Delete. row-key)]
         (when mcells
           (doseq [mcell mcells]
           (if-not ts?
-            (.addColumns del-specs (:family mcell) (:qualifier mcell))
-            (.addColumn del-specs (:family mcell) (:qualifier mcell) (:timestamp mcell)))))
+            (.addColumns del-specs ^bytes (:family mcell) ^bytes (:qualifier mcell))
+            (.addColumn del-specs ^bytes (:family mcell) ^bytes (:qualifier mcell) ^Long (:timestamp mcell)))))
     del-specs))
 
 (defn delete-row
@@ -360,8 +359,8 @@
 ;;Buffered mutation
 
 (defn buffered-muttator
-  [^Connection conn table-name]
-  (.getBufferedMutator (TableName/valueOf table-name)))
+  [^Connection conn ^String table-name]
+  (.getBufferedMutator conn (TableName/valueOf table-name)))
 
 (defn bm-mutate
   [^BufferedMutator bm ^Mutation m]
@@ -378,7 +377,7 @@
 
 ;;Scan
 (defn mk-scan
-  [mcells {:keys [start-row stop-row min-ts max-ts]
+  [mcells {:keys [start-row stop-row ^Long min-ts ^Long max-ts]
            :or {min-ts 0 max-ts (Long/MAX_VALUE)}
            :as specs}]
   (let [^Scan scan-specs (Scan.)]
@@ -396,7 +395,7 @@
       scan-specs*)))
 
 (defn scanner
-  [^Connection conn table-name mcells specs]
+  [^Connection conn ^String table-name mcells specs]
   (let [^Table table (.getTable conn (TableName/valueOf table-name))
         ^Scan scan-specs (mk-scan mcells specs)]
     {:table table
@@ -451,7 +450,7 @@
 
 (defn snapshot
   "Create a timestamp consistent snapshot for the given table"
-  [^Admin admin table-name snapshot-name]
+  [^Admin admin ^String table-name ^String snapshot-name]
   (.snapshot admin snapshot-name (TableName/valueOf table-name)))
 
 (defn snapshot-all
@@ -463,7 +462,7 @@
 
 (defn delete-snapshot
   "Delete an existing snapshot."
-  [^Admin admin snapshot-name]
+  [^Admin admin ^String  snapshot-name]
   (.deleteSnapshot admin snapshot-name))
 
 (defn delete-snapshot-all
@@ -475,12 +474,12 @@
 
 (defn restore-snapshot
   "Restore the specified snapshot on the original table."
-  [^Admin admin snapshot-name]
+  [^Admin admin ^String snapshot-name]
   (.restoreSnapshot admin snapshot-name))
 
 (defn clone-snapshot
   "Create a new table by cloning the snapshot content."
-  [^Admin admin snapshot-name table-name]
+  [^Admin admin ^String snapshot-name ^String table-name]
   (.cloneSnapshot admin snapshot-name (TableName/valueOf table-name)))
 
 (defn- mk-s3-url
