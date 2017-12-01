@@ -1,7 +1,7 @@
 (def hadoop-version "2.7.4")
 (def hbase-version "1.1.7")
 
-(defproject luhhujbb/hbase-admin "0.1.11"
+(defproject luhhujbb/hbase-admin "0.1.12"
   :description "A library to administer hbase"
   :url "https://github.com/luhhujbb/clj-hbase-admin"
   :license {:name "Eclipse Public License"
@@ -25,4 +25,5 @@
                  [amazonica "0.3.111"]]
   :source-paths ["src/clj"]
   :java-source-paths ["src/java"]
+  :warn-on-reflection true
   :aot :all)

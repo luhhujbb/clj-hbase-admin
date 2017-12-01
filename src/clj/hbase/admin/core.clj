@@ -280,7 +280,7 @@
 
 (defn exist?
   "Indicate if a row exists or not"
-  [^Connection connection ^String table-name row-key]
+  [^Connection connection ^String table-name ^bytes row-key]
   (let [^Table table (get-table connection table-name)
         ^Get get (Get. row-key)
         res (.exists table get)]
@@ -288,12 +288,12 @@
     res))
 
 (defn mk-put
-  [row-key mcells & [ts?]]
+  [^bytes row-key mcells & [ts?]]
   (let [^Put put-specs (Put. row-key)]
         (doseq [mcell mcells]
           (if-not ts?
-            (.addColumn put-specs (:family mcell) (:qualifier mcell) (:value mcell))
-            (.addColumn put-specs (:family mcell) (:qualifier mcell) (:timestamp mcell) (:value mcell))))
+            (.addColumn put-specs ^bytes (:family mcell) ^bytes (:qualifier mcell) ^bytes (:value mcell))
+            (.addColumn put-specs ^bytes (:family mcell) ^bytes (:qualifier mcell) ^Long (:timestamp mcell) ^bytes (:value mcell))))
   put-specs))
 
 (defn put-row
@@ -310,21 +310,21 @@
 (defn inc-row
   "Increments one or more columns within a single row.
   map-cells (mcells) value is converted to amount if amount keyword is absent"
-  [connection table-name row-key mcells]
+  [connection table-name ^bytes row-key mcells]
   (let [^Table table (get-table connection table-name)
         ^Increment inc-specs (Increment. row-key)]
         (doseq [mcell mcells]
           (when (integer? (or (:amount mcell) (:value mcell)))
             (.addColumn inc-specs
-              (:family mcell)
-              (:qualifier mcell)
-              (long (or (:amount mcell) (:value mcell))))))
+              ^bytes (:family mcell)
+              ^bytes (:qualifier mcell)
+              ^Long (long (or (:amount mcell) (:value mcell))))))
         (.increment table inc-specs)
         (.close table)))
 
 (defn get-row
   "Retrieve a row"
-  [connection table-name row-key]
+  [connection table-name ^bytes row-key]
   (let [^Table table (get-table connection table-name)
         ^Get get-specs (Get. row-key)]
     (try
@@ -337,13 +337,13 @@
         "error"))))
 
 (defn mk-delele
-  [row-key & [mcells ts?]]
+  [^bytes row-key & [mcells ts?]]
   (let [^Delete del-specs (Delete. row-key)]
         (when mcells
           (doseq [mcell mcells]
           (if-not ts?
-            (.addColumns del-specs (:family mcell) (:qualifier mcell))
-            (.addColumn del-specs (:family mcell) (:qualifier mcell) (:timestamp mcell)))))
+            (.addColumns del-specs ^bytes (:family mcell) ^bytes (:qualifier mcell))
+            (.addColumn del-specs ^bytes (:family mcell) ^bytes (:qualifier mcell) ^Long (:timestamp mcell)))))
     del-specs))
 
 (defn delete-row
@@ -360,8 +360,8 @@
 ;;Buffered mutation
 
 (defn buffered-muttator
-  [^Connection conn table-name]
-  (.getBufferedMutator (TableName/valueOf table-name)))
+  [^Connection conn ^String table-name]
+  (.getBufferedMutator conn (TableName/valueOf table-name)))
 
 (defn bm-mutate
   [^BufferedMutator bm ^Mutation m]
@@ -396,7 +396,7 @@
       scan-specs*)))
 
 (defn scanner
-  [^Connection conn table-name mcells specs]
+  [^Connection conn ^String table-name mcells specs]
   (let [^Table table (.getTable conn (TableName/valueOf table-name))
         ^Scan scan-specs (mk-scan mcells specs)]
     {:table table
@@ -451,7 +451,7 @@
 
 (defn snapshot
   "Create a timestamp consistent snapshot for the given table"
-  [^Admin admin table-name snapshot-name]
+  [^Admin admin ^String table-name ^String snapshot-name]
   (.snapshot admin snapshot-name (TableName/valueOf table-name)))
 
 (defn snapshot-all
@@ -463,7 +463,7 @@
 
 (defn delete-snapshot
   "Delete an existing snapshot."
-  [^Admin admin snapshot-name]
+  [^Admin admin ^String  snapshot-name]
   (.deleteSnapshot admin snapshot-name))
 
 (defn delete-snapshot-all
@@ -475,12 +475,12 @@
 
 (defn restore-snapshot
   "Restore the specified snapshot on the original table."
-  [^Admin admin snapshot-name]
+  [^Admin admin ^String snapshot-name]
   (.restoreSnapshot admin snapshot-name))
 
 (defn clone-snapshot
   "Create a new table by cloning the snapshot content."
-  [^Admin admin snapshot-name table-name]
+  [^Admin admin ^String snapshot-name ^String table-name]
   (.cloneSnapshot admin snapshot-name (TableName/valueOf table-name)))
 
 (defn- mk-s3-url
