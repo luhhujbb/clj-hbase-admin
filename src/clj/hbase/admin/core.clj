@@ -358,7 +358,7 @@
 
 ;;Buffered mutation
 
-(defn buffered-muttator
+(defn buffered-mutator
   [^Connection conn ^String table-name]
   (.getBufferedMutator conn (TableName/valueOf table-name)))
 
