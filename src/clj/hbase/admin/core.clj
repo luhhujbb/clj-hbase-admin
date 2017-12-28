@@ -485,14 +485,14 @@
 (defn- mk-s3-url
   [with-creds? with-path? opts]
   (if with-creds?
-    (str (:s3-protocol opts) (:access-key opts) ":" (:secret-key opts) + "@" (:bucket opts) (when with-path? (:path opts)))
+    (str (:s3-protocol opts) (:access-key opts) ":" (:secret-key opts) "@" (:bucket opts) (when with-path? (:path opts)))
     (str (:s3-protocol opts) (:bucket opts) (when with-path? (:path opts)))))
 
 (defn- mk-toolrunner-args
   [{:keys [snapshot-name url-in url-out parallelism]}]
   (into-array
     (remove nil?
-    ["-snaspshot"
+    ["-snapshot"
      snapshot-name
      (when url-in "-copy-from")
      (when url-in url-in)
