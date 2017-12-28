@@ -20,7 +20,9 @@
                  [org.apache.hbase/hbase-client ~hbase-version]
                  [org.apache.hbase/hbase-server ~hbase-version]
                  [org.apache.hbase/hbase-protocol ~hbase-version]
-                 [org.apache.hbase/hbase ~hbase-version :extension "pom"]]
+                 [org.apache.hbase/hbase ~hbase-version :extension "pom"]
+                 [org.apache.hadoop/hadoop-aws ~hadoop-version]
+                 [org.apache.httpcomponents/httpclient "4.5.4"]]
   :source-paths ["src/clj"]
   :java-source-paths ["src/java"]
   :aot :all)
