@@ -139,9 +139,14 @@ lein do clean, install
 	(.getBytes "my-row-key"))
 ```
 
+## Thanks
+
+Fix to export habse table to s3 @[nenorbot](https://github.com/nenorbot)
+
 ## TODO
 
-test import/export from s3
+* test import from s3
+* fix tls error in leiningen 2.8.1 
 
 ## License
 
