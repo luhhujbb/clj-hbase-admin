@@ -402,7 +402,7 @@
      :result-scanner (.getScanner table scan-specs)}))
 
 (defn sc-next
-  [{:keys [^ResultScanner result-scanner]} nb-rows]
+  [{:keys [^ResultScanner result-scanner]}]
     (try
       (let [^Result result (.next result-scanner)
           ^List<Cell> cells (.listCells result)]
@@ -554,7 +554,7 @@
                            :url-out hdfsurl
                            :parallelism (or (:parallelism opts) 1)}))
           (catch Exception e
-            (log/error "Exception occured while importing from s3")))
+            (log/error "Exception occured while importing from s3" e)))
       (do
         (log/error "Missing hdfs url in config, can't import snapshot")
         {:error true :msg "missing hdfs url in config"}))))
