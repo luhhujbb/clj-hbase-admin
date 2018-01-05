@@ -535,10 +535,17 @@
   [hbase-name snapshot-name opts]
   (try
   (ToolRunner/run
-    (get-config hbase-name)
+    (if (and (:access-key opts) (:secret-key opts))
+      (update-hbase-config
+        (mk-hbase-config (get-config hbase-name))
+        {:fs.s3.awsAccessKeyId (:access-key opts)
+         :fs.s3.awsSecretAccessKey (:secret-key opts)
+         :fs.s3a.access.key (:access-key opts)
+         :fs.s3a.secret.key (:secret-key opts)})
+      (get-config hbase-name))
     (ExportSnapshot.)
     (mk-toolrunner-args {:snapshot-name snapshot-name
-                         :url-out (mk-s3-url (and (:access-key opts) (:secret-key opts)) true opts)
+                         :url-out (mk-s3-url false true opts)
                          :parallelism (or (:parallelism opts) 1)}))
     (catch Exception e
       (log/error "Exception occured while exporting snapshot to s3" e))))
@@ -560,15 +567,15 @@
   [hbase-name snapshot-name opts]
   (let [^Configuration config (get-config hbase-name)
         tr-config (mk-toolrunner-import-config config opts)
-        hdfsurl (.get config "hbase.rootdir")]
-    (if hdfsurl
+        hbasedir (.get config "hbase.rootdir")]
+    (if hbasedir
     (try
     (ToolRunner/run
       tr-config
       (ExportSnapshot.)
       (mk-toolrunner-args {:snapshot-name snapshot-name
                            :url-in (mk-s3-url (and (:access-key opts) (:secret-key opts)) true opts)
-                           :url-out hdfsurl
+                           :url-out hbasedir
                            :parallelism (or (:parallelism opts) 1)}))
           (catch Exception e
             (log/error "Exception occured while importing from s3" e)))
