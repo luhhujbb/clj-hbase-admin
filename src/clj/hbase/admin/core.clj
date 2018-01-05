@@ -558,7 +558,7 @@
     (let [admin (get-admin (get-connection hbase-name))
           tables-name (list-tables-name-as-string admin)]
           (doseq [tn tables-name]
-            (export-snapshot-to-s3 admin (str tn "-" snapshot-name) opts)))
+            (export-snapshot-to-s3 hbase-name (str tn "-" snapshot-name) opts)))
     (catch Exception e
       (log/error "Exception occured while exporting snapshot to s3" e))))
 
