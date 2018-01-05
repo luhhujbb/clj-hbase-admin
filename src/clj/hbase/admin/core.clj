@@ -28,48 +28,60 @@
             (fn [x] (cond
               (instance? java.io.InputStream x) :input-stream
               (instance? clojure.lang.PersistentArrayMap x) :map
+              (instance? org.apache.hadoop.conf.Configuration x) :hbase-configuration
               (string? x) :file-path
               :else :not-supported)))
 
 (defmethod mk-hbase-config :map [properties]
-  (let [^HBaseConfiguration conf (HBaseConfiguration/create)]
+  (let [^Configuration conf (HBaseConfiguration/create)]
     (doseq [[k v] properties]
       (.set conf (name k) v))
     conf))
 
 (defmethod mk-hbase-config :input-stream [^InputStream input-stream]
-  (let [^HBaseConfiguration conf (HBaseConfiguration/create)]
+  (let [^Configuration conf (HBaseConfiguration/create)]
     (.addResource conf input-stream)
     conf))
 
 (defmethod mk-hbase-config :file-path [^String file-path]
-  (let [^HBaseConfiguration conf (HBaseConfiguration/create)]
-    (.addResource conf (io/input-stream file-path))
+  (let [^Configuration conf (HBaseConfiguration/create)]
+    (doseq [file (str/split file-path #",")]
+      (.addResource conf (io/input-stream file)))
     conf))
+
+(defmethod mk-hbase-config :hbase-configuration [^Configuration conf]
+  "Actually clone the configuration conf"
+  (HBaseConfiguration/create conf))
 
 (defmulti update-hbase-config
             (fn [_ x] (cond
               (instance? java.io.InputStream x) :input-stream
               (instance? clojure.lang.PersistentArrayMap x) :map
+              (instance? org.apache.hadoop.conf.Configuration x) :hbase-configuration
               (string? x) :file-path
               :else :not-supported)))
 
-(defmethod update-hbase-config :map [^HBaseConfiguration conf properties]
+(defmethod update-hbase-config :map [^Configuration conf properties]
     (doseq [[k v] properties]
       (.set conf (name k) v))
     conf)
 
-(defmethod update-hbase-config :input-stream [^HBaseConfiguration conf ^InputStream input-stream]
+(defmethod update-hbase-config :input-stream [^Configuration conf ^InputStream input-stream]
     (.addResource conf input-stream)
     conf)
 
-(defmethod update-hbase-config :file-path [^HBaseConfiguration conf ^String file-path]
-    (.addResource conf (io/input-stream file-path))
+(defmethod update-hbase-config :file-path [^Configuration conf ^String file-path]
+    (doseq [file (str/split file-path #",")]
+      (.addResource conf (io/input-stream file)))
     conf)
+
+(defmethod update-hbase-config :hbase-configuration [^Configuration d-conf ^Configuration s-conf]
+    (.merge d-conf s-conf)
+    d-conf)
 
 (defn init-hbase-connection
   "Make a connection and store it into registry"
-  [name ^HBaseConfiguration conf]
+  [name ^Configuration conf]
   (try
     (let [^Connection connection (ConnectionFactory/createConnection conf)]
       (swap! hbase-config-registry assoc name conf)
@@ -504,14 +516,19 @@
  (defn- mk-toolrunner-import-config
    [conf opts]
    (let [tr-config (HBaseConfiguration/create conf)
+         with-creds? (and (:access-key opts) (:secret-key opts))
          properties
-    {:fs.default.name (mk-s3-url true false opts)
-     :fs.defaultFS (mk-s3-url true false opts)
-     :fs.s3.awsAccessKeyId (:access-key opts)
-     :fs.s3.awsSecretAccessKey (:secret-key opts)
+    {:fs.default.name (mk-s3-url false false opts)
+     :fs.defaultFS (mk-s3-url false false opts)
      :hbase.tmp.dir "/tmp/hbase-${user.name}"
-     :hbase.rootdir (mk-s3-url true true opts)}]
-     (update-hbase-config tr-config properties)))
+     :hbase.rootdir (mk-s3-url false true opts)}
+     properties* (if with-creds?
+                    (assoc properties :fs.s3.awsAccessKeyId (:access-key opts)
+                                      :fs.s3.awsSecretAccessKey (:secret-key opts)
+                                      :fs.s3a.access.key (:access-key opts)
+                                      :fs.s3a.secret.key (:secret-key opts))
+                    properties)]
+     (update-hbase-config tr-config properties*)))
 
 (defn export-snapshot-to-s3
   "Export a single snapshot to s3"
@@ -521,7 +538,7 @@
     (get-config hbase-name)
     (ExportSnapshot.)
     (mk-toolrunner-args {:snapshot-name snapshot-name
-                         :url-out (mk-s3-url true true opts)
+                         :url-out (mk-s3-url (and (:access-key opts) (:secret-key opts)) true opts)
                          :parallelism (or (:parallelism opts) 1)}))
     (catch Exception e
       (log/error "Exception occured while exporting snapshot to s3" e))))
@@ -541,8 +558,8 @@
 (defn import-snapshot-from-s3
   "Import a snapshot from s3 given a snapshot name"
   [hbase-name snapshot-name opts]
-  (let [^HBaseConfiguration config (get-config hbase-name)
-        tr-config (mk-toolrunner-import-config config opts)
+  (let [^Configuration config (get-config hbase-name)
+        tr-config (mk-toolrunner-import-config (mk-hbase-config config) opts)
         hdfsurl (or (.get config "fs.default.name") (.get config "fs.defaultFS"))]
     (if hdfsurl
     (try
