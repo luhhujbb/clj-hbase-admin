@@ -15,8 +15,13 @@ lein do clean, install
 ## Example 1: Initialize connection
 
 ```clojure
+;; you can create a configuration from a map
 (def conf (hbase/mk-hbase-config {:hbase.zookeeper.quorum "zk1:2181,zk2:2181,zk3:2181"
                                      :zookeeper.znode.parent "/hbase"}))
+
+;;you can also load hadoop/hbase confs (this is better if you want to use export/import features)
+(def conf (hbase/mk-hbase-config "/etc/hadoop/hdfs-site.xml,/etc/hadoop/core-site.xml,/etc/hbase/hbase-site.xml"))
+
 ;;initialize connection in registry
 (hbase/init-hbase-connection "my-hbase" conf)
 
@@ -139,14 +144,31 @@ lein do clean, install
 	(.getBytes "my-row-key"))
 ```
 
+## Example 7: exportSnapshot
+```clojure
+
+(let [admin (hbase/get-admin (hbase/get-connection "my-hbase"))
+			export-options {:s3-protocol "s3a://"
+												:access-key "****"
+												:secret-key "****"
+												:bucket "my-bucket"
+												:path "/my-custom-path"}]
+
+;;Export data to s3
+			(export-snapshot-to-s3 "my-hbase" "my-snapshot" export-options))
+;;Delete snapshot
+			(delete-snapshot admin "my-snapshot")
+;;re-Import data from s3
+			(import-snapshot-from-s3 "my-hbase" "my-snapshot" export-options))
+```
+
 ## Thanks
 
-Fix to export habse table to s3 @[nenorbot](https://github.com/nenorbot)
+Fix to export hbase table to s3 [@nenorbot](https://github.com/nenorbot)
 
 ## TODO
 
-* test import from s3
-* fix tls error in leiningen 2.8.1 
+* fix tls error in leiningen 2.8.1
 
 ## License
 
