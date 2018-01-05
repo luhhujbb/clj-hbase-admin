@@ -514,7 +514,7 @@
      (if (integer? parallelism) (.toString parallelism) parallelism)])))
 
  (defn- mk-toolrunner-import-config
-   [conf opts]
+   [^Configuration conf opts]
    (let [tr-config (HBaseConfiguration/create conf)
          with-creds? (and (:access-key opts) (:secret-key opts))
          properties
@@ -559,15 +559,15 @@
   "Import a snapshot from s3 given a snapshot name"
   [hbase-name snapshot-name opts]
   (let [^Configuration config (get-config hbase-name)
-        tr-config (mk-toolrunner-import-config (mk-hbase-config config) opts)
-        hdfsurl (or (.get config "fs.default.name") (.get config "fs.defaultFS"))]
+        tr-config (mk-toolrunner-import-config config opts)
+        hdfsurl (.get config "hbase.rootdir")]
     (if hdfsurl
     (try
     (ToolRunner/run
       tr-config
       (ExportSnapshot.)
       (mk-toolrunner-args {:snapshot-name snapshot-name
-                           :url-in (mk-s3-url opts)
+                           :url-in (mk-s3-url (and (:access-key opts) (:secret-key opts)) true opts)
                            :url-out hdfsurl
                            :parallelism (or (:parallelism opts) 1)}))
           (catch Exception e
