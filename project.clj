@@ -20,7 +20,9 @@
                  [org.apache.hbase/hbase-client ~hbase-version]
                  [org.apache.hbase/hbase-server ~hbase-version :exclusions [org.glassfish/javax.el]]
                  [org.apache.hbase/hbase-protocol ~hbase-version]
-                 [org.apache.hbase/hbase ~hbase-version :extension "pom"]]
+                 [org.apache.hbase/hbase ~hbase-version :extension "pom"]
+				 [org.apache.hadoop/hadoop-aws ~hadoop-version :exclusions [joda-time]]
+				 [org.apache.httpcomponents/httpclient "4.5.4"]]
   :repositories {"apache-repo" {:url "https://repository.apache.org/content/repositories/snapshots"}}
   :source-paths ["src/clj"]
   :java-source-paths ["src/java"]
