@@ -149,17 +149,17 @@ lein do clean, install
 
 (let [admin (hbase/get-admin (hbase/get-connection "my-hbase"))
 			export-options {:s3-protocol "s3a://"
-												:access-key "****"
-												:secret-key "****"
-												:bucket "my-bucket"
-												:path "/my-custom-path"}]
+					:access-key "****"
+					:secret-key "****"
+					:bucket "my-bucket"
+					:path "/my-custom-path"}]
 
 ;;Export data to s3
-			(export-snapshot-to-s3 "my-hbase" "my-snapshot" export-options))
+	(export-snapshot-to-s3 "my-hbase" "my-snapshot" export-options)
 ;;Delete snapshot
-			(delete-snapshot admin "my-snapshot")
+	(delete-snapshot admin "my-snapshot")
 ;;re-Import data from s3
-			(import-snapshot-from-s3 "my-hbase" "my-snapshot" export-options))
+	(import-snapshot-from-s3 "my-hbase" "my-snapshot" export-options))
 ```
 
 ## Thanks
