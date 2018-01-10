@@ -574,7 +574,7 @@
       tr-config
       (ExportSnapshot.)
       (mk-toolrunner-args {:snapshot-name snapshot-name
-                           :url-in (mk-s3-url (and (:access-key opts) (:secret-key opts)) true opts)
+                           :url-in (mk-s3-url false true opts)
                            :url-out hbasedir
                            :parallelism (or (:parallelism opts) 1)}))
           (catch Exception e
