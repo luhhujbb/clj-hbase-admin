@@ -4,6 +4,7 @@ import java.io.IOException;
 import java.util.Arrays;
 import java.util.ArrayList;
 import java.util.Map;
+import java.util.Set;
 import java.util.List;
 import java.util.Collection;
 
@@ -81,9 +82,19 @@ public class HBaseClusterStatus {
   }
 
   private static PersistentVector getRegionStateList(Map<String,RegionState> rStlist){
+    /*For 1.1.x and 1.2.x*/
     ArrayList<Object> sL = new ArrayList<Object>();
     for (Map.Entry<String,RegionState> entry : rStlist.entrySet()){
       sL.add(getRegionStateMap(entry.getValue()));
+    }
+    return PersistentVector.create(sL);
+  }
+
+  private static PersistentVector getRegionStateList(Set<RegionState> rStlist){
+    /*For 1.4.0 and more*/
+    ArrayList<Object> sL = new ArrayList<Object>();
+    for (RegionState rs : rStlist){
+      sL.add(getRegionStateMap(rs));
     }
     return PersistentVector.create(sL);
   }
