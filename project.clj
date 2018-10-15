@@ -1,5 +1,5 @@
 (def hadoop-version "2.7.5")
-(def hbase-version "1.1.7")
+(def hbase-version "1.4.8")
 
 (defproject luhhujbb/hbase-admin "0.1.19-SNAPSHOT"
   :description "A library to administer hbase"
