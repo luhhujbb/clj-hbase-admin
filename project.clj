@@ -1,7 +1,7 @@
 (def hadoop-version "2.7.5")
 (def hbase-version "1.4.8")
 
-(defproject luhhujbb/hbase-admin "0.1.19-SNAPSHOT"
+(defproject luhhujbb/hbase-admin "1.4.8.20"
   :description "A library to administer hbase"
   :url "https://github.com/luhhujbb/clj-hbase-admin"
   :license {:name "Eclipse Public License"
